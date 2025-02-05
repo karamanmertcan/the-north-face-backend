@@ -70,4 +70,11 @@ export class CommentsService {
             { new: true }
         ).populate('user');
     }
+
+
+    async getCommentsCount(videoId: string) {
+        const comments = await this.commentModel.countDocuments({ video: videoId });
+        console.log('comments', comments)
+        return comments;
+    }
 } 

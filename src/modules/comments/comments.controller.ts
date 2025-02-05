@@ -43,4 +43,10 @@ export class CommentsController {
   ) {
     return this.commentsService.likeComment(id, currentUser._id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('video/:videoId/count')
+  async getCommentsCount(@Param('videoId') videoId: string) {
+    return this.commentsService.getCommentsCount(videoId);
+  }
 } 
