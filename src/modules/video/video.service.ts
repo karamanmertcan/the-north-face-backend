@@ -6,6 +6,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { getS3Config } from '../../config/s3.config';
 import { MakeObjectId } from 'src/pipes/parse-object-id.pipe';
+import { Comment, CommentDocument } from 'src/schemas/comment.schema';
 
 @Injectable()
 export class VideoService {
@@ -14,6 +15,7 @@ export class VideoService {
     constructor(
         @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
         private configService: ConfigService,
+        @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
     ) {
         this.s3Client = getS3Config(configService);
     }
@@ -52,9 +54,24 @@ export class VideoService {
             .populate('creator')
             .sort({ createdAt: -1 })
             .skip(page * 10)
-            .limit(10);
+            .limit(10)
+            .lean();
 
-        return videos;
+        // Her video için yorum sayısını hesapla
+        const videosWithCommentsCount = await Promise.all(
+            videos.map(async (video) => {
+                const commentsCount = await this.commentModel.countDocuments({
+                    video: video._id
+                });
+
+                return {
+                    ...video,
+                    commentsCount
+                };
+            })
+        );
+        console.log('videosWithCommentsCount', videosWithCommentsCount)
+        return videosWithCommentsCount;
     }
 
     async getVideoById(videoId: string) {
