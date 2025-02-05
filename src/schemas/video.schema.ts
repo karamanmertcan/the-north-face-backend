@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { User } from './user.schema';
 
-export type VideoDocument = Video & Document;
 
 @Schema({
     timestamps: true,
@@ -23,17 +22,14 @@ export class Video {
     @Prop({ default: 0 })
     views: number;
 
-    @Prop({ default: 0 })
-    likes: number;
+    @Prop({ type: [String], default: [] })
+    likedBy: string[];
 
     @Prop({ default: 0 })
     dislikes: number;
 
-    @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }] })
-    likedBy: User[];
-
-    @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }] })
-    dislikedBy: User[];
+    @Prop({ type: [String], default: [] })
+    dislikedBy: string[];
 
     @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
     creator: User;
@@ -49,6 +45,12 @@ export class Video {
 
     @Prop({ default: 'pending' })
     status: 'pending' | 'processing' | 'completed' | 'failed';
-}
 
-export const VideoSchema = SchemaFactory.createForClass(Video); 
+    @Prop({ default: 0 })
+    likes: number;
+}
+export type VideoDocument = Video & Document;
+
+const VideoSchema = SchemaFactory.createForClass(Video);
+
+export { VideoSchema };

@@ -20,7 +20,7 @@ export class AuthService {
 
 
     async register(registerDto: RegisterDto) {
-        const { email, password, name, lastName } = registerDto;
+        const { email, password, firstName, lastName } = registerDto;
 
         const user = await this.userModel.findOne({ email });
         if (user) {
@@ -29,7 +29,7 @@ export class AuthService {
 
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        const newUser = new this.userModel({ email, password: hashedPassword, name, lastName, username: generateUsername(name, lastName, email) });
+        const newUser = new this.userModel({ email, password: hashedPassword, firstName, lastName, username: generateUsername(firstName, lastName, email) });
 
         await newUser.save();
 

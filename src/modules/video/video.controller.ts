@@ -39,4 +39,14 @@ export class VideoController {
     ) {
         return this.videoService.likeVideo(id, currentUser._id);
     }
+
+    @Put(':id/dislike')
+    @UseGuards(JwtAuthGuard)
+    async dislikeVideo(
+        @Param('id') id: string,
+        @CurrentUser() currentUser,
+    ) {
+        return this.videoService.dislikeVideo(id, currentUser._id);
+    }
+
 } 

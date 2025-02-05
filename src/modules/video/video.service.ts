@@ -5,6 +5,7 @@ import { Video, VideoDocument } from '../../schemas/video.schema';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { getS3Config } from '../../config/s3.config';
+import { MakeObjectId } from 'src/pipes/parse-object-id.pipe';
 
 @Injectable()
 export class VideoService {
@@ -45,14 +46,14 @@ export class VideoService {
     }
 
     async getVideos(page: number) {
+        console.log('page', page)
         const videos = await this.videoModel
             .find({ isPublished: true, status: 'completed' })
-            .populate('creator', 'username avatar')
+            .populate('creator')
             .sort({ createdAt: -1 })
             .skip(page * 10)
             .limit(10);
 
-        console.log('videos', videos)
         return videos;
     }
 
@@ -68,14 +69,55 @@ export class VideoService {
     }
 
     async likeVideo(videoId: string, userId: string) {
-        return this.videoModel.findByIdAndUpdate(
+        const video = await this.videoModel.findById(videoId);
+        if (!video) {
+            throw new Error('Video not found');
+        }
+        if (video.likedBy.includes(userId)) {
+            throw new Error('Video already liked');
+        }
+
+        //if user disliked video, remove dislike
+        if (video.dislikedBy.includes(userId)) {
+            await this.videoModel.findByIdAndUpdate(
+                videoId,
+                { $pull: { dislikedBy: userId }, $inc: { dislikes: -1 } },
+                { new: true }
+            );
+        }
+
+        return await this.videoModel.findByIdAndUpdate(
             videoId,
             {
                 $addToSet: { likedBy: userId },
                 $inc: { likes: 1 },
             },
             { new: true }
-        );
+        ).populate('creator');
+    }
+
+    async dislikeVideo(videoId: string, userId: string) {
+        const video = await this.videoModel.findById(videoId);
+        if (!video) {
+            throw new Error('Video not found');
+        }
+        if (video.dislikedBy.includes(userId)) {
+            throw new Error('Video already disliked');
+        }
+
+        //if user disliked video, remove like
+        if (video.likedBy.includes(userId)) {
+            await this.videoModel.findByIdAndUpdate(
+                videoId,
+                { $pull: { likedBy: userId }, $inc: { likes: -1 } },
+                { new: true }
+            );
+        }
+        return await this.videoModel.findByIdAndUpdate(
+            videoId,
+            { $addToSet: { dislikedBy: userId }, $inc: { dislikes: 1 } },
+            { new: true }
+        ).populate('creator');
     }
 
     async incrementViews(videoId: string) {

@@ -7,6 +7,8 @@ import { User, UserSchema } from './schemas/user.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
 import { VideoModule } from './modules/video/video.module';
+import { FollowingFollowersModule } from './modules/following-followers/following-followers.module';
+import { CommentsModule } from './modules/comments/comments.module';
 
 @Module({
   imports: [
@@ -21,7 +23,9 @@ import { VideoModule } from './modules/video/video.module';
       inject: [ConfigService],
     }),
     AuthModule,
-    VideoModule
+    VideoModule,
+    FollowingFollowersModule,
+    CommentsModule
   ],
   controllers: [AppController],
   providers: [AppService],
