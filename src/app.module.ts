@@ -9,6 +9,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { VideoModule } from './modules/video/video.module';
 import { FollowingFollowersModule } from './modules/following-followers/following-followers.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { ProductsModule } from './modules/products/products.module';
+import { BrandsModule } from './modules/brands/brands.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -25,7 +28,10 @@ import { CommentsModule } from './modules/comments/comments.module';
     AuthModule,
     VideoModule,
     FollowingFollowersModule,
-    CommentsModule
+    CommentsModule,
+    ProductsModule,
+    BrandsModule,
+    UsersModule
   ],
   controllers: [AppController],
   providers: [AppService],

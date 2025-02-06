@@ -7,9 +7,11 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User, UserSchema } from '../../schemas/user.schema';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
+import { IkasService } from '../../services/ikas.service';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -24,7 +26,7 @@ import { JwtStrategy } from '../../strategies/jwt.strategy';
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [JwtStrategy, PassportModule],
+  providers: [AuthService, JwtStrategy, IkasService],
+  exports: [JwtStrategy, PassportModule, IkasService],
 })
 export class AuthModule { }

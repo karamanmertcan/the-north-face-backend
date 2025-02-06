@@ -7,10 +7,16 @@ import { ConfigService } from '@nestjs/config';
 import { getS3Config } from '../../config/s3.config';
 import { MakeObjectId } from 'src/pipes/parse-object-id.pipe';
 import { Comment, CommentDocument } from 'src/schemas/comment.schema';
+import * as ffmpeg from 'fluent-ffmpeg';
+import * as ffmpegStatic from 'ffmpeg-static';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 @Injectable()
 export class VideoService {
     private s3Client: S3Client;
+    private readonly uploadDir = 'uploads/thumbnails';
 
     constructor(
         @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
@@ -18,33 +24,82 @@ export class VideoService {
         @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
     ) {
         this.s3Client = getS3Config(configService);
+        // Uploads klasörünü oluştur
+        if (!fs.existsSync(this.uploadDir)) {
+            fs.mkdirSync(this.uploadDir, { recursive: true });
+        }
+        // ffmpeg path'ini set et
+        ffmpeg.setFfmpegPath(ffmpegStatic);
+    }
+
+    private async saveBufferToTemp(buffer: Buffer, originalname: string): Promise<string> {
+        const tempPath = path.join(os.tmpdir(), `${Date.now()}-${originalname}`);
+        fs.writeFileSync(tempPath, buffer);
+        return tempPath;
+    }
+
+    private async generateThumbnail(videoPath: string): Promise<string> {
+        const thumbnailName = `${Date.now()}_thumb.jpg`;
+        const thumbnailPath = path.join(this.uploadDir, thumbnailName);
+
+        return new Promise((resolve, reject) => {
+            ffmpeg(videoPath)
+                .screenshots({
+                    timestamps: ['00:00:01'],
+                    filename: thumbnailName,
+                    folder: this.uploadDir,
+                    size: '320x240'
+                })
+                .on('end', () => {
+                    resolve(thumbnailPath);
+                })
+                .on('error', (err) => {
+                    reject(err);
+                });
+        });
     }
 
     async uploadVideo(file: Express.Multer.File, userId: string) {
-        const fileName = `${Date.now()}-${file.originalname}`;
-        const bucketName = this.configService.get('AWS_BUCKET_NAME');
+        try {
+            // Önce buffer'ı geçici dosyaya kaydet
+            const tempVideoPath = await this.saveBufferToTemp(file.buffer, file.originalname);
 
-        // S3'e video yükle
-        await this.s3Client.send(
-            new PutObjectCommand({
-                Bucket: bucketName,
-                Key: `videos/${fileName}`,
-                Body: file.buffer,
-                ContentType: file.mimetype,
-            })
-        );
+            const fileName = `${Date.now()}-${file.originalname}`;
+            const bucketName = this.configService.get('AWS_BUCKET_NAME');
 
-        // Video kaydını oluştur
-        const video = new this.videoModel({
-            title: file.originalname,
-            description: 'adasdasd',
-            videoUrl: `https://${bucketName}.s3.amazonaws.com/videos/${fileName}`,
-            thumbnailUrl: 'https://google.com', // Thumbnail oluşturulunca güncellenecek
-            creator: userId,
-            status: 'processing',
-        });
+            // S3'e video yükle
+            await this.s3Client.send(
+                new PutObjectCommand({
+                    Bucket: bucketName,
+                    Key: `videos/${fileName}`,
+                    Body: file.buffer,
+                    ContentType: file.mimetype,
+                })
+            );
 
-        return await video.save();
+            // Thumbnail oluştur
+            const thumbnailPath = await this.generateThumbnail(tempVideoPath);
+
+            // Geçici video dosyasını sil
+            fs.unlinkSync(tempVideoPath);
+
+            // Video kaydını oluştur
+            const video = new this.videoModel({
+                title: file.originalname,
+                description: 'adasdasd',
+                videoUrl: `https://${bucketName}.s3.amazonaws.com/videos/${fileName}`,
+                thumbnailUrl: `/thumbnails/${path.basename(thumbnailPath)}`,
+                creator: userId,
+                status: 'processing',
+            });
+
+            await video.save();
+            return video;
+
+        } catch (error) {
+            console.error('Video upload error:', error);
+            throw error;
+        }
     }
 
     async getVideos(page: number) {
