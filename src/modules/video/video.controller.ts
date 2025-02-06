@@ -23,7 +23,7 @@ export class VideoController {
         @Query('page', ParseIntPipe) page: number,
     ) {
         console.log(page);
-        return this.videoService.getVideos(page);
+        return this.videoService.getVideos(page, 20);
     }
 
     @Get(':id')

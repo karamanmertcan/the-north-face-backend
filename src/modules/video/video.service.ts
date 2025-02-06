@@ -102,31 +102,37 @@ export class VideoService {
         }
     }
 
-    async getVideos(page: number) {
-        console.log('page', page)
-        const videos = await this.videoModel
-            .find({ isPublished: true, status: 'completed' })
-            .populate('creator')
-            .sort({ createdAt: -1 })
-            .skip(page * 10)
-            .limit(10)
-            .lean();
+    async getVideos(page: number, limit: number = 5) {
+        try {
+            const videos = await this.videoModel
+                .find({})
+                .populate('creator')
+                .sort({ createdAt: -1 })
+                .skip(page * limit)
+                .limit(limit)
+                .lean();
 
-        // Her video için yorum sayısını hesapla
-        const videosWithCommentsCount = await Promise.all(
-            videos.map(async (video) => {
-                const commentsCount = await this.commentModel.countDocuments({
-                    video: video._id
-                });
+            // Her video için yorum sayısını hesapla
+            const videosWithCommentsCount = await Promise.all(
+                videos.map(async (video) => {
+                    const commentsCount = await this.commentModel.countDocuments({
+                        video: video._id
+                    });
 
-                return {
-                    ...video,
-                    commentsCount
-                };
-            })
-        );
-        console.log('videosWithCommentsCount', videosWithCommentsCount)
-        return videosWithCommentsCount;
+                    return {
+                        ...video,
+                        commentsCount
+                    };
+                })
+            );
+
+            console.log(`Page: ${page}, Videos: ${videos.length}`);
+            return videosWithCommentsCount;
+
+        } catch (error) {
+            console.error('Error fetching videos:', error);
+            throw error;
+        }
     }
 
     async getVideoById(videoId: string) {
