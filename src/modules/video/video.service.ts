@@ -5,7 +5,7 @@ import { Video, VideoDocument } from '../../schemas/video.schema';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { getS3Config } from '../../config/s3.config';
-import { MakeObjectId } from 'src/pipes/parse-object-id.pipe';
+import { MakeObjectId, ObjectId } from 'src/pipes/parse-object-id.pipe';
 import { Comment, CommentDocument } from 'src/schemas/comment.schema';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegStatic from 'ffmpeg-static';
@@ -48,7 +48,7 @@ export class VideoService {
                     timestamps: ['00:00:01'],
                     filename: thumbnailName,
                     folder: this.uploadDir,
-                    size: '320x240'
+                    size: '500x240'
                 })
                 .on('end', () => {
                     resolve(thumbnailPath);
@@ -135,10 +135,14 @@ export class VideoService {
         }
     }
 
-    async getVideoById(videoId: string) {
-        return this.videoModel
+    async getVideoById(videoId: ObjectId) {
+        const video = await this.videoModel
             .findById(videoId)
-            .populate('creator', 'username avatar');
+            .populate('creator')
+            .select('-password');
+
+        console.log('vide 2o', video)
+        return video;
     }
 
     async updateVideo(videoId: string, updateData: Partial<Video>) {
@@ -147,6 +151,7 @@ export class VideoService {
     }
 
     async likeVideo(videoId: string, userId: string) {
+        console.log('likeVideo', videoId, userId)
         const video = await this.videoModel.findById(videoId);
         if (!video) {
             throw new Error('Video not found');

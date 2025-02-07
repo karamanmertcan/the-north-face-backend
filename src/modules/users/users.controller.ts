@@ -1,7 +1,9 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Post, UploadedFile, UseInterceptors, Put, Body, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/decorators/current-user';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateUserDto } from 'src/dtos/user/update-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -20,6 +22,32 @@ export class UsersController {
   getUserVideos(@CurrentUser() user) {
     return this.usersService.getUserVideos(user._id);
   }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getUserProfile(@CurrentUser() user) {
+    return this.usersService.getUserProfileWithVideos(user._id);
+  }
+
+
+  @Post('avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('avatar'))
+  async updateAvatar(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any
+  ) {
+    return this.usersService.updateAvatar(user._id, file);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile-update')
+  updateUser(@CurrentUser() user: any, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.updateUser(user._id, updateUserDto);
+  }
+
 
 
 }

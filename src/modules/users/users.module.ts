@@ -4,11 +4,13 @@ import { UsersController } from './users.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/user.schema';
 import { Video, VideoSchema } from 'src/schemas/video.schema';
+import { FollowersFollowings, FollowersFollowingsSchema } from 'src/schemas/followers-followings.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-    MongooseModule.forFeature([{ name: Video.name, schema: VideoSchema }])
+    MongooseModule.forFeature([{ name: Video.name, schema: VideoSchema }]),
+    MongooseModule.forFeature([{ name: FollowersFollowings.name, schema: FollowersFollowingsSchema }])
   ],
   controllers: [UsersController],
   providers: [UsersService],

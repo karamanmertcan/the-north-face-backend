@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoService } from './video.service';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { CurrentUser } from 'src/decorators/current-user';
+import { ObjectId, ParseObjectIdPipe } from 'src/pipes/parse-object-id.pipe';
 
 @Controller('videos')
 export class VideoController {
@@ -26,8 +27,9 @@ export class VideoController {
         return this.videoService.getVideos(page, 20);
     }
 
-    @Get(':id')
-    async getVideo(@Param('id') id: string) {
+    @Get('single/:id')
+    async getVideo(@Param('id', new ParseObjectIdPipe()) id: ObjectId) {
+        console.log('id', id)
         return this.videoService.getVideoById(id);
     }
 
