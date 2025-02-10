@@ -21,7 +21,7 @@ export class AuthService {
         private ikasService: IkasService,
     ) { }
 
-    private async sendIkasWebhook(userData: any) {
+    private async sendIkasWebhook() {
         try {
             const accessToken = await this.ikasService.getAccessToken();
 
@@ -41,7 +41,7 @@ export class AuthService {
             const variables = {
                 input: {
                     scopes: ["store/customer/created"],
-                    endpoint: `https://the-north-face-backend-production.up.railway.app/webhooks/ikas/customer`,
+                    endpoint: `https://the-north-face-backend-production.up.railway.app/ikas/webhooks/orders`,
                 }
             };
 
@@ -79,7 +79,7 @@ export class AuthService {
 
         await newUser.save();
 
-        // await this.sendIkasWebhook(newUser);
+        await this.sendIkasWebhook();
 
         const payload = {
             id: newUser._id,
