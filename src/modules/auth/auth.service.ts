@@ -26,8 +26,8 @@ export class AuthService {
             const accessToken = await this.ikasService.getAccessToken();
 
             const mutation = `
-                mutation SaveWebhook($input: WebhookInput!) {
-                    saveWebhook(input: $input) {
+                mutation DeleteWebhook($input: WebhookInput!) {
+                    deleteWebhook(input: $input) {
                         id
                         scope
                         endpoint
@@ -40,8 +40,7 @@ export class AuthService {
 
             const variables = {
                 input: {
-                    scopes: ["store/customer/created"],
-                    endpoint: `https://the-north-face-backend-production.up.railway.app/ikas/webhooks/orders`,
+                    scopes: ["store/customer/updated", "store/order/created"],
                 }
             };
 

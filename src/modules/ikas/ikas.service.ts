@@ -25,9 +25,7 @@ export class IkasService {
         console.log('getWebhooks')
         console.log('getWebhooks')
         return {
-            "webhook": {
-                "message": "Webhook received"
-            }
+            "success": true
         }
 
     }

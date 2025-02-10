@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpCode } from '@nestjs/common';
 import { IkasService } from './ikas.service';
 
 @Controller('ikas')
@@ -7,6 +7,7 @@ export class IkasController {
 
 
   @Get('webhooks/orders')
+  @HttpCode(200)
   async getWebhooks() {
     return this.ikasService.getWebhooks();
   }
