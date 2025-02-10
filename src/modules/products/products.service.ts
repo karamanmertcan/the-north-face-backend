@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { IkasService } from '../../services/ikas.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Favorite, FavoriteDocument } from 'src/schemas/favorite.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class ProductsService {
     constructor(
         private ikasService: IkasService,
+        @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>
     ) { }
 
     async getProducts(page: number = 1, limit: number = 10) {
@@ -76,6 +80,7 @@ export class ProductsService {
                     }
                 }
             );
+
             return response.data;
         } catch (error) {
             console.error('Ürün listesi alma hatası:', error);
@@ -99,6 +104,8 @@ export class ProductsService {
                                 name
                             }
                             brandId
+                            shortDescription
+                            description
                             variants {
                                 id
                                 sku
@@ -134,7 +141,16 @@ export class ProductsService {
                 }
             );
 
-            return response.data;
+            console.log('response detail', response.data.data.listProduct.data[0])
+
+            const data = response.data.data.listProduct.data[0]
+
+            const findProductIsFavorite = await this.favoriteModel.findOne({ productId: data.id })
+
+            return {
+                ...data,
+                isFavorite: findProductIsFavorite ? true : false
+            }
         } catch (error) {
             console.error('Ürün detayı alma hatası:', error);
             throw error;

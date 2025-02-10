@@ -12,6 +12,9 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { ProductsModule } from './modules/products/products.module';
 import { BrandsModule } from './modules/brands/brands.module';
 import { UsersModule } from './modules/users/users.module';
+import { LikedVideosModule } from './modules/liked-videos/liked-videos.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
+import { IkasModule } from './modules/ikas/ikas.module';
 
 @Module({
   imports: [
@@ -31,7 +34,10 @@ import { UsersModule } from './modules/users/users.module';
     CommentsModule,
     ProductsModule,
     BrandsModule,
-    UsersModule
+    UsersModule,
+    LikedVideosModule,
+    FavoritesModule,
+    IkasModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -12,6 +12,7 @@ import * as ffmpegStatic from 'ffmpeg-static';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { LikeVideo, LikeVideoDocument } from 'src/schemas/like-video.schema';
 
 @Injectable()
 export class VideoService {
@@ -22,6 +23,7 @@ export class VideoService {
         @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
         private configService: ConfigService,
         @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
+        @InjectModel(LikeVideo.name) private likeVideoModel: Model<LikeVideoDocument>,
     ) {
         this.s3Client = getS3Config(configService);
         // Uploads klasörünü oluştur
@@ -168,6 +170,15 @@ export class VideoService {
                 { new: true }
             );
         }
+
+        const likeVideo = await this.likeVideoModel.create({
+            video: videoId,
+            user: userId
+        });
+
+        await likeVideo.save();
+
+
 
         return await this.videoModel.findByIdAndUpdate(
             videoId,

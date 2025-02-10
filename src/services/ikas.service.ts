@@ -19,7 +19,8 @@ export class IkasService {
                 return this.ikasAccessToken;
             }
 
-            const storeName = 'hikiespace';
+
+            const storeName = 'hikiestore';
             const clientId = this.configService.get('IKAS_CLIENT_ID');
             const clientSecret = this.configService.get('IKAS_CLIENT_SECRET');
 
@@ -39,6 +40,9 @@ export class IkasService {
 
             this.ikasAccessToken = response.data.access_token;
             this.tokenExpiryTime = currentTime + (60 * 60 * 1000); // 1 saat
+
+            console.log('getAccessToken', this.ikasAccessToken)
+
 
             return this.ikasAccessToken;
         } catch (error) {

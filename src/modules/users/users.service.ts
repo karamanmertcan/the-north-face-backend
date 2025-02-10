@@ -8,6 +8,8 @@ import { UpdateUserDto } from 'src/dtos/user/update-user.dto';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getS3Config } from 'src/config/s3.config';
 import { ConfigService } from '@nestjs/config';
+import { LikeVideo, LikeVideoDocument } from 'src/schemas/like-video.schema';
+import { Favorite, FavoriteDocument } from 'src/schemas/favorite.schema';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +20,8 @@ export class UsersService {
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
         @InjectModel(FollowersFollowings.name) private followersFollowingsModel: Model<FollowersFollowingsDocument>,
+        @InjectModel(LikeVideo.name) private likeVideoModel: Model<LikeVideoDocument>,
+        @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
         private configService: ConfigService,
     ) {
         this.s3Client = getS3Config(configService);
@@ -46,11 +50,24 @@ export class UsersService {
             follower: userId
         }).countDocuments().lean();
 
+        const likedVideos = await this.videoModel.find({
+            creator: userId
+        }).lean();
+
+        const countTotalLikesOfUserVideos = likedVideos.reduce((acc, video) => acc + video.likedBy.length, 0);
+
+        const favorites = await this.favoriteModel.find({
+            user: userId
+        }).lean();
+
+
         return {
             user,
             videos,
             followers,
-            following
+            following,
+            countTotalLikesOfUserVideos,
+            favorites
         }
 
     }
