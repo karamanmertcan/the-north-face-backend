@@ -29,8 +29,9 @@ export class AuthController {
   }
 
 
-  @Post('webhook')
-  async handleWebhook(@Body() webhookData: any) {
-    return this.authService.registerWebhook(webhookData);
+  @Post('webhook/register')
+  @HttpCode(200)
+  async registerWebhook(@Body() body: any) {
+    return this.authService.registerWebhook(body);
   }
 }
