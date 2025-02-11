@@ -262,27 +262,12 @@ export class AuthService {
                         customerSegmentIds: data.customerSegmentIds
                     });
 
-                    // Eğer kullanıcı bizim sistemimizde yoksa oluşturalım
-                    const existingUser1 = await this.userModel.findOne({ email: data.email });
-                    if (!existingUser1) {
-                        const username = generateUsername(data.firstName, data.lastName, data.email);
-                        await this.userModel.create({
-                            email: data.email,
-                            username,
-                            firstName: data.firstName,
-                            lastName: data.lastName,
-                            isVerified: data.isEmailVerified
-                        });
-                    }
+
 
                     return newIkasUser;
 
                 case 'store/customer/updated':
-                    //kullanıcı var mı kontrol et
-                    const existingUser = await this.userModel.findOne({ email: data.email });
-                    if (!existingUser) {
-                        throw new BadRequestException('User not found');
-                    }
+
 
                     // Mevcut kullanıcıyı güncelle
                     const updatedIkasUser = await this.ikasUserModel.findOneAndUpdate(
@@ -317,15 +302,7 @@ export class AuthService {
                         { new: true, upsert: true }
                     );
 
-                    // Bizim sistemdeki kullanıcıyı da güncelle
-                    await this.userModel.findOneAndUpdate(
-                        { email: data.email },
-                        {
-                            firstName: data.firstName,
-                            lastName: data.lastName,
-                            isVerified: data.isEmailVerified
-                        }
-                    );
+
 
                     return updatedIkasUser;
 
