@@ -226,9 +226,9 @@ export class AuthService {
             // Gelen data string olarak geliyor, JSON'a çevirelim
             const data = JSON.parse(webhookData.data);
 
-            console.log(webhookData)
+            console.log('webhookData', webhookData)
 
-            console.log(data)
+            console.log('data 2', data)
 
             switch (webhookData.scope) {
                 case 'store/customer/created':
