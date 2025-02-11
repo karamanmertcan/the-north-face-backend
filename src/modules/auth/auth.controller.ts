@@ -27,4 +27,10 @@ export class AuthController {
   async getMe() {
     return this.authService.getMe();
   }
+
+
+  @Post('webhook/register')
+  async registerWebhook(@Body() body: any) {
+    return this.authService.registerWebhook(body);
+  }
 }

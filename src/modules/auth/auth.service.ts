@@ -195,4 +195,9 @@ export class AuthService {
         }
     }
 
+    async registerWebhook(body: any) {
+        console.log(body)
+        return body;
+    }
+
 }
