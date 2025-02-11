@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get } from '@nestjs/common';
+import { Body, Controller, Post, Get, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from 'src/dtos/auth/register.dto';
 import { LoginDto } from 'src/dtos/auth/login.dto';
@@ -30,6 +30,7 @@ export class AuthController {
 
 
   @Post('webhook/register')
+  @HttpCode(200)
   async registerWebhook(@Body() body: any) {
     return this.authService.registerWebhook(body);
   }
