@@ -29,4 +29,8 @@ export class IkasService {
         }
 
     }
+
+    async createIkasUser(body: any) {
+
+    }
 }

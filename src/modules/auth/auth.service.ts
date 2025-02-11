@@ -10,12 +10,14 @@ import { LoginDto } from 'src/dtos/auth/login.dto';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IkasService } from '../../services/ikas.service';
+import { IkasUser, IkasUserDocument } from 'src/schemas/ikas-user.schema';
 
 @Injectable()
 export class AuthService {
 
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
+        @InjectModel(IkasUser.name) private ikasUserModel: Model<IkasUserDocument>,
         private jwtService: JwtService,
         private configService: ConfigService,
         private ikasService: IkasService,
@@ -78,7 +80,7 @@ export class AuthService {
 
         await newUser.save();
 
-        await this.sendIkasWebhook();
+        // await this.sendIkasWebhook();
 
         const payload = {
             id: newUser._id,
@@ -86,6 +88,30 @@ export class AuthService {
         }
 
         const token = this.jwtService.sign(payload);
+
+        //create ikas user
+        const ikasUser = await this.ikasService.createIkasUser({
+            email: newUser.email,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            password,
+            isAcceptMarketing: false,
+            captchaToken: null,
+            phone: null,
+        });
+
+        console.log(ikasUser)
+
+
+        if (ikasUser) {
+            await this.ikasUserModel.create({
+                firstName: ikasUser.customer.firstName,
+                lastName: ikasUser.customer.lastName,
+                email: ikasUser.customer.email,
+                ikasId: ikasUser.customer.id,
+            })
+        }
+
 
         return {
             user: newUser,
@@ -195,11 +221,118 @@ export class AuthService {
         }
     }
 
-    async registerWebhook(body: any) {
-        console.log(body)
-        return {
-            success: true,
-        };
+    async registerWebhook(webhookData: any) {
+        try {
+            // Gelen data string olarak geliyor, JSON'a çevirelim
+            const data = JSON.parse(webhookData.data);
+
+            switch (webhookData.scope) {
+                case 'store/customer/created':
+                    // Yeni kullanıcı oluşturma
+                    const newIkasUser = await this.ikasUserModel.create({
+                        ikasId: data.id,
+                        email: data.email,
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        fullName: data.fullName,
+                        accountStatus: data.accountStatus,
+                        accountStatusUpdatedAt: new Date(data.accountStatusUpdatedAt).getTime(),
+                        addresses: data.addresses,
+                        attributes: data.attributes,
+                        customerSequence: data.customerSequence,
+                        deleted: data.deleted,
+                        emailVerifiedDate: data.emailVerifiedDate,
+                        isEmailVerified: data.isEmailVerified,
+                        isPhoneVerified: data.isPhoneVerified,
+                        phone: data.phone,
+                        phoneSubscriptionStatus: data.phoneSubscriptionStatus,
+                        phoneSubscriptionStatusUpdatedAt: new Date(data.phoneSubscriptionStatusUpdatedAt).getTime(),
+                        preferredLanguage: data.preferredLanguage,
+                        registrationSource: data.registrationSource,
+                        smsSubscriptionStatus: data.smsSubscriptionStatus,
+                        smsSubscriptionStatusUpdatedAt: new Date(data.smsSubscriptionStatusUpdatedAt).getTime(),
+                        subscriptionStatus: data.subscriptionStatus,
+                        subscriptionStatusUpdatedAt: new Date(data.subscriptionStatusUpdatedAt).getTime(),
+                        tagIds: data.tagIds,
+                        customerGroupIds: data.customerGroupIds,
+                        customerSegmentIds: data.customerSegmentIds
+                    });
+
+                    // Eğer kullanıcı bizim sistemimizde yoksa oluşturalım
+                    const existingUser1 = await this.userModel.findOne({ email: data.email });
+                    if (!existingUser1) {
+                        const username = generateUsername(data.firstName, data.lastName, data.email);
+                        await this.userModel.create({
+                            email: data.email,
+                            username,
+                            firstName: data.firstName,
+                            lastName: data.lastName,
+                            isVerified: data.isEmailVerified
+                        });
+                    }
+
+                    return newIkasUser;
+
+                case 'store/customer/updated':
+                    //kullanıcı var mı kontrol et
+                    const existingUser = await this.userModel.findOne({ email: data.email });
+                    if (!existingUser) {
+                        throw new BadRequestException('User not found');
+                    }
+
+                    // Mevcut kullanıcıyı güncelle
+                    const updatedIkasUser = await this.ikasUserModel.findOneAndUpdate(
+                        { ikasId: data.id },
+                        {
+                            email: data.email,
+                            firstName: data.firstName,
+                            lastName: data.lastName,
+                            fullName: data.fullName,
+                            accountStatus: data.accountStatus,
+                            accountStatusUpdatedAt: new Date(data.accountStatusUpdatedAt).getTime(),
+                            addresses: data.addresses,
+                            attributes: data.attributes,
+                            customerSequence: data.customerSequence,
+                            deleted: data.deleted,
+                            emailVerifiedDate: data.emailVerifiedDate,
+                            isEmailVerified: data.isEmailVerified,
+                            isPhoneVerified: data.isPhoneVerified,
+                            phone: data.phone,
+                            phoneSubscriptionStatus: data.phoneSubscriptionStatus,
+                            phoneSubscriptionStatusUpdatedAt: new Date(data.phoneSubscriptionStatusUpdatedAt).getTime(),
+                            preferredLanguage: data.preferredLanguage,
+                            registrationSource: data.registrationSource,
+                            smsSubscriptionStatus: data.smsSubscriptionStatus,
+                            smsSubscriptionStatusUpdatedAt: new Date(data.smsSubscriptionStatusUpdatedAt).getTime(),
+                            subscriptionStatus: data.subscriptionStatus,
+                            subscriptionStatusUpdatedAt: new Date(data.subscriptionStatusUpdatedAt).getTime(),
+                            tagIds: data.tagIds,
+                            customerGroupIds: data.customerGroupIds,
+                            customerSegmentIds: data.customerSegmentIds
+                        },
+                        { new: true, upsert: true }
+                    );
+
+                    // Bizim sistemdeki kullanıcıyı da güncelle
+                    await this.userModel.findOneAndUpdate(
+                        { email: data.email },
+                        {
+                            firstName: data.firstName,
+                            lastName: data.lastName,
+                            isVerified: data.isEmailVerified
+                        }
+                    );
+
+                    return updatedIkasUser;
+
+                default:
+                    console.log('Bilinmeyen webhook scope:', webhookData.scope);
+                    return null;
+            }
+        } catch (error) {
+            console.error('Webhook işleme hatası:', error);
+            throw error;
+        }
     }
 
 }

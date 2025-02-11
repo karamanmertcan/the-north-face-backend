@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { User, UserSchema } from '../../schemas/user.schema';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { IkasService } from '../../services/ikas.service';
+import { IkasUser, IkasUserSchema } from 'src/schemas/ikas-user.schema';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { IkasService } from '../../services/ikas.service';
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: IkasUser.name, schema: IkasUserSchema }]),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, IkasService],

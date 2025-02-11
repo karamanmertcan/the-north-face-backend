@@ -50,4 +50,168 @@ export class IkasService {
             throw error;
         }
     }
-} 
+
+    async createIkasUser(userData: {
+        email: string;
+        password: string;
+        firstName: string;
+        lastName: string;
+        isAcceptMarketing: boolean;
+        captchaToken: string | null;
+        phone: string;
+    }) {
+        const mutation = `
+            mutation registerCustomer(
+                $attributes: [CustomerAttributeValueInput!], 
+                $captchaToken: String, 
+                $email: String!, 
+                $firstName: String!, 
+                $isAcceptMarketing: Boolean, 
+                $lastName: String!, 
+                $locale: String, 
+                $orderId: String, 
+                $password: String!, 
+                $phone: String, 
+                $preferredLanguage: String
+            ) {
+                registerCustomer(
+                    attributes: $attributes,
+                    captchaToken: $captchaToken,
+                    email: $email,
+                    firstName: $firstName,
+                    isAcceptMarketing: $isAcceptMarketing,
+                    lastName: $lastName,
+                    locale: $locale,
+                    orderId: $orderId,
+                    password: $password,
+                    phone: $phone,
+                    preferredLanguage: $preferredLanguage,
+                ) {
+                    customer {
+                        id
+                        email
+                        firstName
+                        lastName
+                        phone
+                        isEmailVerified
+                        isPhoneVerified
+                    }
+                    token
+                    tokenExpiry
+                }
+            }
+        `;
+
+        try {
+            const response = await axios.post('https://api.myikas.com/api/sf/graphql?op=registerCustomer', {
+                query: mutation,
+                variables: {
+                    ...userData,
+                    attributes: [],
+                    locale: null,
+                    orderId: null,
+                    preferredLanguage: null
+                }
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'x-api-key': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtIjoiZjkyOTFmNDctZDY1Ny00NTY5LTlhNGUtZTJmNjRhYmVkMjA3Iiwic2YiOiI1YmRmYmYzYi1lOWVmLTQ3ZjMtYmYzYi03MjlhNjcwYjMyZTgiLCJzZnQiOjEsInNsIjoiZWE3NTUyOWItNDU3MC00MTk5LWFlZjEtMzE5YTNiN2FhNGU3In0.NfVRBrkyqXQuDmrGdlFTf9X3oYBECDaBEpkV72d7eXc"
+                }
+            });
+
+            if (response.data.errors) {
+                throw new Error(response.data.errors[0].message);
+            }
+
+            console.log(response.data)
+
+            return response.data.data.registerCustomer;
+        } catch (error) {
+            console.error('IKAS user creation error:', error);
+            throw error;
+        }
+    }
+}
+
+export const createIkasUser = async (userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    isAcceptMarketing: boolean;
+    captchaToken: string | null;
+    phone: string;
+}) => {
+    const mutation = `
+        mutation registerCustomer(
+            $attributes: [CustomerAttributeValueInput!], 
+            $captchaToken: String, 
+            $email: String!, 
+            $firstName: String!, 
+            $isAcceptMarketing: Boolean, 
+            $lastName: String!, 
+            $locale: String, 
+            $orderId: String, 
+            $password: String!, 
+            $phone: String, 
+            $preferredLanguage: String
+        ) {
+            registerCustomer(
+                attributes: $attributes,
+                captchaToken: $captchaToken,
+                email: $email,
+                firstName: $firstName,
+                isAcceptMarketing: $isAcceptMarketing,
+                lastName: $lastName,
+                locale: $locale,
+                orderId: $orderId,
+                password: $password,
+                phone: $phone,
+                preferredLanguage: $preferredLanguage,
+            ) {
+                customer {
+                    id
+                    email
+                    firstName
+                    lastName
+                    phone
+                    isEmailVerified
+                    isPhoneVerified
+                }
+                token
+                tokenExpiry
+            }
+        }
+    `;
+
+    try {
+        const response = await fetch('https://api.myikas.com/api/sf/graphql?op=registerCustomer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                query: mutation,
+                variables: {
+                    ...userData,
+                    attributes: [],
+                    locale: null,
+                    orderId: null,
+                    preferredLanguage: null
+                }
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.errors) {
+            throw new Error(data.errors[0].message);
+        }
+
+        return data.data.registerCustomer;
+    } catch (error) {
+        throw error;
+    }
+}; 

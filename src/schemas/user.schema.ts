@@ -5,8 +5,8 @@ import { Document } from 'mongoose';
 @Schema({
     timestamps: true, // createdAt ve updatedAt alanlarını otomatik ekler
 })
-export class User {
-    @Prop({ required: true, unique: true })
+export class User extends Document {
+    @Prop({ required: true })
     username: string;
 
     @Prop({ required: true, unique: true })
