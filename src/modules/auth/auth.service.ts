@@ -226,6 +226,10 @@ export class AuthService {
             // Gelen data string olarak geliyor, JSON'a çevirelim
             const data = JSON.parse(webhookData.data);
 
+            console.log(webhookData)
+
+            console.log(data)
+
             switch (webhookData.scope) {
                 case 'store/customer/created':
                     // Yeni kullanıcı oluşturma
