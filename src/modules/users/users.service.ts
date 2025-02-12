@@ -133,4 +133,35 @@ export class UsersService {
         }
     }
 
+    async getUserProfile(userId: string) {
+        const user = await this.userModel.findById({
+            _id: userId
+        }).select('-password').lean();
+
+        const videos = await this.videoModel.find({
+            creator: userId
+        }).lean();
+
+        const followers = await this.followersFollowingsModel.find({
+            following: userId
+        }).countDocuments().lean();
+
+        const following = await this.followersFollowingsModel.find({
+            follower: userId
+        }).countDocuments().lean();
+
+        const favorites = await this.favoriteModel.find({
+            user: userId
+        }).lean();
+
+        return {
+            user,
+            videos,
+            followers,
+            following,
+            favorites
+        }
+
+    }
+
 }

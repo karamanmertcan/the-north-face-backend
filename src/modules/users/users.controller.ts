@@ -49,5 +49,11 @@ export class UsersController {
   }
 
 
+  @UseGuards(JwtAuthGuard)
+  @Get('profile/:userId')
+  getUserProfileById(@Param('userId') userId: string) {
+    return this.usersService.getUserProfile(userId);
+  }
+
 
 }
