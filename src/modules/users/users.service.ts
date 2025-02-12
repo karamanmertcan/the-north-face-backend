@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { Model } from 'mongoose';
@@ -162,6 +162,37 @@ export class UsersService {
             favorites
         }
 
+    }
+
+    async getUserProfileById(userId: string, currentUserId: string) {
+        try {
+            const user = await this.userModel.findById(userId);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            // Kullanıcının takip edilip edilmediğini kontrol et
+            const isFollowing = await this.followersFollowingsModel.findOne({
+                follower: currentUserId,
+                following: userId
+            });
+
+            const videos = await this.videoModel.find({ creator: userId });
+            const followers = await this.followersFollowingsModel.countDocuments({ following: userId });
+            const following = await this.followersFollowingsModel.countDocuments({ follower: userId });
+
+            return {
+                user: {
+                    ...user.toObject(),
+                    isFollowing: !!isFollowing // boolean değer olarak dön
+                },
+                videos,
+                followers,
+                following
+            };
+        } catch (error) {
+            throw error;
+        }
     }
 
 }
