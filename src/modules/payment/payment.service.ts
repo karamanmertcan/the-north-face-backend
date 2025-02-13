@@ -66,15 +66,23 @@ export class PaymentService {
     }
 
     async create3DPayment(paymentData: any) {
+        console.log("paymentData", paymentData);
         try {
             const hashKey = this.generateHashKey(
                 paymentData.amount.toString(),
-                '1', // taksit sayısı
+                '1',
                 'TRY',
                 paymentData.invoiceId
             );
 
-            // HTML form oluştur
+            const appUrl = this.configService.get('APP_URL');
+            const returnUrl = `${appUrl}/api/payment/callback`;
+            const cancelUrl = `${appUrl}/api/payment/cancel`;
+
+            console.log("hashKey", hashKey);
+            console.log("returnUrl", returnUrl);
+            console.log("cancelUrl", cancelUrl);
+
             const formHtml = `
                 <form id="sipay_form" action="${this.apiUrl}/api/paySmart3D" method="POST">
                     <input type="hidden" name="merchant_key" value="${this.merchantKey}">
@@ -84,20 +92,30 @@ export class PaymentService {
                     <input type="hidden" name="invoice_description" value="${paymentData.description}">
                     <input type="hidden" name="total" value="${paymentData.amount}">
                     <input type="hidden" name="installments_number" value="1">
-                    <input type="hidden" name="card_number" value="${paymentData.cardNumber}">
-                    <input type="hidden" name="card_holder" value="${paymentData.cardHolder}">
+                    <input type="hidden" name="cc_holder_name" value="${paymentData.cardHolder}">
+                    <input type="hidden" name="cc_no" value="${paymentData.cardNumber}">
                     <input type="hidden" name="expiry_month" value="${paymentData.expMonth}">
                     <input type="hidden" name="expiry_year" value="${paymentData.expYear}">
                     <input type="hidden" name="cvv" value="${paymentData.cvc}">
-                    <input type="hidden" name="name" value="${paymentData.cardHolder}">
-                    <input type="hidden" name="return_url" value="${this.configService.get('APP_URL')}/payment/callback">
-                    <input type="hidden" name="cancel_url" value="${this.configService.get('APP_URL')}/payment/cancel">
+                    <input type="hidden" name="name" value="${paymentData.cardHolder.split(' ')[0]}">
+                    <input type="hidden" name="surname" value="${paymentData.cardHolder.split(' ').slice(1).join(' ')}">
+                    <input type="hidden" name="bill_email" value="customer@example.com">
+                    <input type="hidden" name="bill_phone" value="5555555555">
+                    <input type="hidden" name="items" value='[{"name":"HikieWatch Payment","price":${paymentData.amount},"quantity":1}]'>
+                    <input type="hidden" name="return_url" value="${returnUrl}">
+                    <input type="hidden" name="cancel_url" value="${cancelUrl}">
                     <input type="hidden" name="hash_key" value="${hashKey}">
+                    <input type="hidden" name="response_method" value="POST">
+                    <input type="hidden" name="bill_address1" value="Test Address">
+                    <input type="hidden" name="bill_city" value="Istanbul">
+                    <input type="hidden" name="bill_country" value="TR">
                 </form>
                 <script>
                     document.getElementById('sipay_form').submit();
                 </script>
             `;
+
+            console.log("formHtml", formHtml);
 
             return { html_content: formHtml };
         } catch (error) {
@@ -118,6 +136,8 @@ export class PaymentService {
                 error_code,
                 error_message
             } = callbackData;
+
+            console.log("callbackData", callbackData);
 
             if (status === 'SUCCESS') {
                 // Ödeme başarılı - veritabanında güncelleme yapılabilir

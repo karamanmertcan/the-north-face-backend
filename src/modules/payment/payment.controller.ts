@@ -13,10 +13,13 @@ export class PaymentController {
         return this.paymentService.create3DPayment(paymentData);
     }
 
-    @Get('callback')
-    async handle3DCallback(@Query() queryParams: any, @Res() res: Response) {
+    @Post('callback')
+    async handle3DCallback(@Body() callbackData: any, @Res() res: Response) {
         try {
-            const result = await this.paymentService.handle3DCallback(queryParams);
+            console.log("Callback data received:", callbackData);
+            const result = await this.paymentService.handle3DCallback(callbackData);
+
+            console.log("result", result);
 
             // Başarılı ödeme sayfası HTML'i
             const successHtml = `
@@ -84,6 +87,7 @@ export class PaymentController {
 
             res.send(successHtml);
         } catch (error) {
+            console.error("Callback error:", error);
             // Hata sayfası HTML'i
             const errorHtml = `
                 <!DOCTYPE html>
@@ -146,8 +150,9 @@ export class PaymentController {
         }
     }
 
-    @Get('cancel')
-    async handleCancel(@Query() queryParams: any, @Res() res: Response) {
+    @Post('cancel')
+    async handleCancel(@Body() cancelData: any, @Res() res: Response) {
+        console.log("Cancel data received:", cancelData);
         const cancelHtml = `
             <!DOCTYPE html>
             <html>
