@@ -15,6 +15,7 @@ import { UsersModule } from './modules/users/users.module';
 import { LikedVideosModule } from './modules/liked-videos/liked-videos.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { IkasModule } from './modules/ikas/ikas.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -37,7 +38,8 @@ import { IkasModule } from './modules/ikas/ikas.module';
     UsersModule,
     LikedVideosModule,
     FavoritesModule,
-    IkasModule
+    IkasModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [AppService],
