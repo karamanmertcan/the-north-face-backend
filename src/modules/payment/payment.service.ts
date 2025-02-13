@@ -76,8 +76,8 @@ export class PaymentService {
             );
 
             const appUrl = this.configService.get('APP_URL');
-            const returnUrl = `${appUrl}/api/payment/callback`;
-            const cancelUrl = `${appUrl}/api/payment/cancel`;
+            const returnUrl = `${appUrl}/payment/callback`;
+            const cancelUrl = `${appUrl}/payment/cancel`;
 
             console.log("hashKey", hashKey);
             console.log("returnUrl", returnUrl);
