@@ -128,28 +128,34 @@ export class PaymentService {
         try {
             // 3D doğrulama sonrası gelen verileri işle
             const {
-                status,
+                sipay_status,
                 payment_id,
                 order_id,
-                merchant_key,
+                order_no,
                 invoice_id,
                 error_code,
-                error_message
+                error,
+                status_description,
+                amount,
+                credit_card_no
             } = callbackData;
 
             console.log("callbackData", callbackData);
 
-            if (status === 'SUCCESS') {
+            if (sipay_status === '1' && error_code === '100') {
                 // Ödeme başarılı - veritabanında güncelleme yapılabilir
                 return {
                     success: true,
-                    payment_id,
-                    order_id,
-                    invoice_id
+                    payment_id: payment_id || order_id,
+                    order_id: order_no,
+                    invoice_id,
+                    amount,
+                    card_no: credit_card_no,
+                    message: status_description
                 };
             } else {
                 // Ödeme başarısız
-                throw new Error(error_message || 'Ödeme işlemi başarısız');
+                throw new Error(error || 'Ödeme işlemi başarısız');
             }
         } catch (error) {
             console.error('3D Callback hatası:', error);
