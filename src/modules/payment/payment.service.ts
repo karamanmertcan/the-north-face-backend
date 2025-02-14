@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { OrdersService } from '../orders/orders.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Order, OrderDocument } from 'src/schemas/order.schema';
+
+import { Model } from 'mongoose';
 
 @Injectable()
 export class PaymentService {
@@ -13,7 +17,8 @@ export class PaymentService {
 
     constructor(
         private configService: ConfigService,
-        private ordersService: OrdersService
+        private ordersService: OrdersService,
+        @InjectModel(Order.name) private orderModel: Model<OrderDocument>
     ) {
         this.apiUrl = this.configService.get('SIPAY_API_URL');
         this.merchantKey = this.configService.get('SIPAY_MERCHANT_KEY');
@@ -134,35 +139,56 @@ export class PaymentService {
                 sipay_status,
                 payment_id,
                 order_id,
-                order_no,
                 invoice_id,
                 error_code,
-                error,
                 status_description,
                 amount,
-                credit_card_no
+                credit_card_no,
+                items,
+                user_id,
+                shipping_address
             } = callbackData;
 
             console.log("callbackData", callbackData);
 
             if (sipay_status === '1' && error_code === '100') {
-                // Sipariş oluştur
-                const orderResult = await this.ordersService.createOrder({
-                    items: JSON.parse(callbackData.items || '[]'),
-                    amount: parseFloat(amount)
+                // Kendi DB'mizde order oluştur
+                const order = await this.orderModel.create({
+                    userId: user_id,
+                    orderNumber: `ORD-${Date.now()}`,
+                    totalAmount: parseFloat(amount),
+                    items: JSON.parse(items),
+                    shippingAddress: JSON.parse(shipping_address),
+                    status: 'processing',
+                    paymentId: payment_id,
+                    isPaid: true,
+                    paidAt: new Date()
+                });
+
+                // İkas'ta order oluştur
+                const ikasOrder = await this.ordersService.createOrder({
+                    items: JSON.parse(items),
+                    shippingAddress: JSON.parse(shipping_address),
+                    totalAmount: parseFloat(amount)
+                });
+
+                // Kendi order'ımızı İkas order ID ile güncelle
+                await order.updateOne({
+                    ikasOrderId: ikasOrder.id
                 });
 
                 return {
                     success: true,
-                    payment_id: payment_id || order_id,
-                    order_id: orderResult.orderNumber,
+                    payment_id: payment_id,
+                    order_id: order.orderNumber,
+                    ikas_order_id: ikasOrder.id,
                     invoice_id,
                     amount,
                     card_no: credit_card_no,
                     message: status_description
                 };
             } else {
-                throw new Error(error || 'Ödeme işlemi başarısız');
+                throw new Error('Ödeme işlemi başarısız');
             }
         } catch (error) {
             console.error('3D Callback hatası:', error);
