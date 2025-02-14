@@ -149,36 +149,46 @@ export class PaymentService {
                 shipping_address
             } = callbackData;
 
-            console.log("callbackData", callbackData);
+            console.log('SİPARİŞ TAMAMLANDI');
+            console.log('Callback Data:', callbackData);
 
             if (sipay_status === '1' && error_code === '100') {
+                // Gelen verileri kontrol et ve parse et
+                let parsedItems;
+                let parsedAddress;
 
-                console.log('SİPARİŞ TAMAMLANDI')
-
+                try {
+                    parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+                    parsedAddress = typeof shipping_address === 'string' ? JSON.parse(shipping_address) : shipping_address;
+                } catch (parseError) {
+                    console.error('Parse error:', parseError);
+                    parsedItems = items;
+                    parsedAddress = shipping_address;
+                }
 
                 // Kendi DB'mizde order oluştur
                 const order = await this.orderModel.create({
                     userId: user_id,
                     orderNumber: `ORD-${Date.now()}`,
-                    totalAmount: parseFloat(amount),
-                    items: JSON.parse(items),
-                    shippingAddress: JSON.parse(shipping_address),
+                    totalAmount: amount,
+                    items: parsedItems,
+                    shippingAddress: parsedAddress,
                     status: 'processing',
                     paymentId: payment_id,
                     isPaid: true,
                     paidAt: new Date()
                 });
 
-                console.log("order", order);
+                console.log("Created Order:", order);
 
                 // İkas'ta order oluştur
                 const ikasOrder = await this.ordersService.createOrder({
-                    items: JSON.parse(items),
-                    shippingAddress: JSON.parse(shipping_address),
+                    items: parsedItems,
+                    shippingAddress: parsedAddress,
                     totalAmount: parseFloat(amount)
                 });
 
-                console.log("ikasOrder", ikasOrder);
+                console.log("Created Ikas Order:", ikasOrder);
 
                 // Kendi order'ımızı İkas order ID ile güncelle
                 await order.updateOne({
