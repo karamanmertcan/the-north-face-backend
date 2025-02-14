@@ -152,6 +152,10 @@ export class PaymentService {
             console.log("callbackData", callbackData);
 
             if (sipay_status === '1' && error_code === '100') {
+
+                console.log('SİPARİŞ TAMAMLANDI')
+
+
                 // Kendi DB'mizde order oluştur
                 const order = await this.orderModel.create({
                     userId: user_id,
@@ -165,12 +169,16 @@ export class PaymentService {
                     paidAt: new Date()
                 });
 
+                console.log("order", order);
+
                 // İkas'ta order oluştur
                 const ikasOrder = await this.ordersService.createOrder({
                     items: JSON.parse(items),
                     shippingAddress: JSON.parse(shipping_address),
                     totalAmount: parseFloat(amount)
                 });
+
+                console.log("ikasOrder", ikasOrder);
 
                 // Kendi order'ımızı İkas order ID ile güncelle
                 await order.updateOne({
