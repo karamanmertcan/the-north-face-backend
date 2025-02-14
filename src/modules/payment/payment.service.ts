@@ -7,6 +7,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from 'src/schemas/order.schema';
 
 import { Model } from 'mongoose';
+import { User, UserDocument } from 'src/schemas/user.schema';
 
 @Injectable()
 export class PaymentService {
@@ -18,7 +19,8 @@ export class PaymentService {
     constructor(
         private configService: ConfigService,
         private ordersService: OrdersService,
-        @InjectModel(Order.name) private orderModel: Model<OrderDocument>
+        @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+        @InjectModel(User.name) private userModel: Model<UserDocument>
     ) {
         this.apiUrl = this.configService.get('SIPAY_API_URL');
         this.merchantKey = this.configService.get('SIPAY_MERCHANT_KEY');
@@ -76,6 +78,8 @@ export class PaymentService {
 
     async create3DPayment(paymentData: any) {
         console.log("paymentData", paymentData);
+        const user = await this.userModel.findById(paymentData.user_id);
+        console.log("user", user);
         try {
             const hashKey = this.generateHashKey(
                 paymentData.amount.toString(),
@@ -91,6 +95,13 @@ export class PaymentService {
             console.log("hashKey", hashKey);
             console.log("returnUrl", returnUrl);
             console.log("cancelUrl", cancelUrl);
+
+            // Custom parametreleri JSON olarak hazırla
+            const customParams = {
+                user_id: user._id.toString(),
+                shipping_address: paymentData.shippingAddress,
+                items: paymentData.items
+            };
 
             const formHtml = `
                 <form id="sipay_form" action="${this.apiUrl}/api/paySmart3D" method="POST">
@@ -108,11 +119,10 @@ export class PaymentService {
                     <input type="hidden" name="cvv" value="${paymentData.cvc}">
                     <input type="hidden" name="name" value="${paymentData.cardHolder.split(' ')[0]}">
                     <input type="hidden" name="surname" value="${paymentData.cardHolder.split(' ').slice(1).join(' ')}">
-                    <input type="hidden" name="bill_email" value="customer@example.com">
-                    <input type="hidden" name="bill_phone" value="5555555555">
-                    <input type="hidden" name="items" value='${JSON.stringify(paymentData.items)}'>
-                    <input type="hidden" name="shipping_address" value='${JSON.stringify(paymentData.shippingAddress)}'>
-                    <input type="hidden" name="user_id" value='${paymentData.user_id}'>
+                    <input type="hidden" name="bill_email" value="${user.email}">
+                    <input type="hidden" name="items" value='[{"name":"HikieWatch Payment","price":${paymentData.amount},"quantity":1}]'>
+                    <input type="hidden" name="custom_params" value='${JSON.stringify(customParams)}'>
+                    <input type="hidden" name="user_id" value="${user._id}">
                     <input type="hidden" name="return_url" value="${returnUrl}">
                     <input type="hidden" name="cancel_url" value="${cancelUrl}">
                     <input type="hidden" name="hash_key" value="${hashKey}">
@@ -139,33 +149,41 @@ export class PaymentService {
         try {
             const {
                 sipay_status,
+                payment_id,
                 order_id,
                 invoice_id,
                 error_code,
                 status_description,
                 amount,
                 credit_card_no,
+                custom_params
             } = callbackData;
 
             console.log('SİPARİŞ TAMAMLANDI');
             console.log('Callback Data:', callbackData);
 
-            // Form'dan gelen gizli input değerlerini al
-            const items = callbackData.items ? JSON.parse(callbackData.items) : [];
-            const shippingAddress = callbackData.shipping_address ? JSON.parse(callbackData.shipping_address) : {};
-            const userId = callbackData.user_id;
+            // Custom parametreleri parse et
+            let userData;
+            try {
+                userData = JSON.parse(custom_params);
+                console.log("Parsed Custom Params:", userData);
+            } catch (error) {
+                console.error("Custom params parse error:", error);
+                throw new Error("Invalid custom params");
+            }
 
             if (sipay_status === '1' && error_code === '100') {
                 // Kendi DB'mizde order oluştur
                 const order = await this.orderModel.create({
-                    userId: userId,
-                    orderNumber: order_id,
-                    totalAmount: parseFloat(amount),
-                    items: items,
-                    shippingAddress: shippingAddress,
+                    userId: userData.user_id,
+                    orderNumber: `HS-${Date.now()}`,
+                    totalAmount: amount,
+                    items: userData.items,
+                    shippingAddress: userData.shipping_address,
                     status: 'processing',
-                    paymentId: order_id,
+                    paymentId: payment_id,
                     isPaid: true,
+                    ikasOrderId: order_id,
                     paidAt: new Date()
                 });
 
@@ -173,14 +191,10 @@ export class PaymentService {
 
                 // İkas'ta order oluştur
                 const ikasOrder = await this.ordersService.createOrder({
-                    orderData: {
-                        amount: parseFloat(amount)
-                    },
-                    items: {
-                        items: items
-                    },
-                    shippingAddress: shippingAddress,
-                    userId: userId
+                    orderData: userData.items,
+                    items: userData.items,
+                    shippingAddress: userData.shipping_address,
+                    userId: userData.user_id,
                 });
 
                 console.log("Created Ikas Order:", ikasOrder);
@@ -192,7 +206,7 @@ export class PaymentService {
 
                 return {
                     success: true,
-                    payment_id: order_id,
+                    payment_id: payment_id,
                     order_id: order.orderNumber,
                     ikas_order_id: ikasOrder.id,
                     invoice_id,

@@ -6,7 +6,10 @@ export class Order {
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
     userId: Types.ObjectId;
 
-    @Prop({ required: true })
+    @Prop({
+        type: String,
+        required: false
+    })
     ikasOrderId: string;
 
     @Prop({ required: true })
