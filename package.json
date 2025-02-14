@@ -42,6 +42,7 @@
     "fluent-ffmpeg": "^2.1.3",
     "helmet": "^8.0.0",
     "nestjs-pino": "^4.3.0",
+    "nestjs-uuid": "^0.1.4",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pino-http": "^10.4.0",

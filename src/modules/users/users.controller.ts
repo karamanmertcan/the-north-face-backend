@@ -1,9 +1,11 @@
-import { Controller, Get, UseGuards, Post, UploadedFile, UseInterceptors, Put, Body, Param, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, Post, UploadedFile, UseInterceptors, Put, Body, Param, Request, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/decorators/current-user';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateUserDto } from 'src/dtos/user/update-user.dto';
+import { AddressDto } from 'src/dtos/user/add-address.dto';
+import { UpdateUserAddressDto } from 'src/dtos/user/update-address.dto';
 
 @Controller('users')
 export class UsersController {
@@ -58,5 +60,51 @@ export class UsersController {
     return this.usersService.getUserProfileById(userId, req.user._id);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('addresses')
+  async getUserAddresses(@CurrentUser() user) {
+    return this.usersService.getUserAddresses(user._id);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Post('addresses')
+  async addUserAddress(@CurrentUser() user, @Body() addressDto: AddressDto) {
+    return this.usersService.addAddress(user._id, addressDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('addresses/:addressId')
+  async updateUserAddress(
+    @CurrentUser() user,
+    @Param('addressId') addressId: string,
+    @Body() updateUserAddressDto: UpdateUserAddressDto
+  ) {
+    return this.usersService.updateUserAddress(user._id, addressId, updateUserAddressDto);
+  }
+
+  @Get('countries')
+  async getCountries() {
+    return this.usersService.getCountries();
+  }
+
+  @Get('cities/:countryId')
+  async getCities(@Param('countryId') countryId: string) {
+    return this.usersService.getCities(countryId);
+  }
+
+  @Get('districts/:cityId')
+  async getDistricts(@Param('cityId') cityId: string) {
+    return this.usersService.getDistricts(cityId);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('addresses/:addressId')
+  async deleteUserAddress(@CurrentUser() user, @Param('addressId') addressId: string) {
+    console.log('user in controller', user)
+    console.log('addressId in controller', addressId)
+    return this.usersService.deleteUserAddress(user._id, addressId);
+  }
 
 }

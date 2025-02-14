@@ -16,12 +16,15 @@ import { LikedVideosModule } from './modules/liked-videos/liked-videos.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { IkasModule } from './modules/ikas/ikas.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { UuidModule } from 'nestjs-uuid';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    UuidModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -39,7 +42,8 @@ import { PaymentModule } from './modules/payment/payment.module';
     LikedVideosModule,
     FavoritesModule,
     IkasModule,
-    PaymentModule
+    PaymentModule,
+    OrdersModule
   ],
   controllers: [AppController],
   providers: [AppService],

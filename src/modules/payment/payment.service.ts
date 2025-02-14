@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import { OrdersService } from '../orders/orders.service';
 
 @Injectable()
 export class PaymentService {
@@ -10,7 +11,10 @@ export class PaymentService {
     private readonly appKey: string;
     private readonly appSecret: string;
 
-    constructor(private configService: ConfigService) {
+    constructor(
+        private configService: ConfigService,
+        private ordersService: OrdersService
+    ) {
         this.apiUrl = this.configService.get('SIPAY_API_URL');
         this.merchantKey = this.configService.get('SIPAY_MERCHANT_KEY');
         this.appKey = this.configService.get('SIPAY_APP_KEY');
@@ -126,7 +130,6 @@ export class PaymentService {
 
     async handle3DCallback(callbackData: any) {
         try {
-            // 3D doğrulama sonrası gelen verileri işle
             const {
                 sipay_status,
                 payment_id,
@@ -143,18 +146,22 @@ export class PaymentService {
             console.log("callbackData", callbackData);
 
             if (sipay_status === '1' && error_code === '100') {
-                // Ödeme başarılı - veritabanında güncelleme yapılabilir
+                // Sipariş oluştur
+                const orderResult = await this.ordersService.createOrder({
+                    items: JSON.parse(callbackData.items || '[]'),
+                    amount: parseFloat(amount)
+                });
+
                 return {
                     success: true,
                     payment_id: payment_id || order_id,
-                    order_id: order_no,
+                    order_id: orderResult.orderNumber,
                     invoice_id,
                     amount,
                     card_no: credit_card_no,
                     message: status_description
                 };
             } else {
-                // Ödeme başarısız
                 throw new Error(error || 'Ödeme işlemi başarısız');
             }
         } catch (error) {
