@@ -16,7 +16,7 @@ export class OrdersService {
         this.ikasApiUrl = 'https://api.myikas.com/api/v1/admin/graphql';
     }
 
-    async createOrder(orderData: any, items: any, shippingAddress: any, userId: any) {
+    async createOrder({ orderData, items, shippingAddress, userId }: { orderData: any, items: any, shippingAddress: any, userId: any }) {
         try {
             const accessToken = await this.ikasService.getAccessToken();
             console.log('Order Data:', orderData); // Gelen veriyi logla

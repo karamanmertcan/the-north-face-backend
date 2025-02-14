@@ -183,10 +183,10 @@ export class PaymentService {
 
                 // İkas'ta order oluştur
                 const ikasOrder = await this.ordersService.createOrder({
+                    orderData: parsedItems,
                     items: parsedItems,
                     shippingAddress: parsedAddress,
                     userId: user_id,
-                    totalAmount: parseFloat(amount)
                 });
 
                 console.log("Created Ikas Order:", ikasOrder);
