@@ -185,6 +185,7 @@ export class PaymentService {
                 const ikasOrder = await this.ordersService.createOrder({
                     items: parsedItems,
                     shippingAddress: parsedAddress,
+                    userId: user_id,
                     totalAmount: parseFloat(amount)
                 });
 

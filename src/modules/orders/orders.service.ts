@@ -16,10 +16,13 @@ export class OrdersService {
         this.ikasApiUrl = 'https://api.myikas.com/api/v1/admin/graphql';
     }
 
-    async createOrder(orderData: any) {
+    async createOrder(orderData: any, items: any, shippingAddress: any, userId: any) {
         try {
             const accessToken = await this.ikasService.getAccessToken();
             console.log('Order Data:', orderData); // Gelen veriyi logla
+            console.log('Items:', items);
+            console.log('Shipping Address:', shippingAddress);
+            console.log('User ID:', userId);
 
             // Veri validasyonu
             if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
@@ -90,7 +93,7 @@ export class OrdersService {
                     disableAutoCreateCustomer: true,
                     order: {
                         id: this.uuidService.generate(),
-                        orderLineItems: orderData.items.map((item: any) => ({
+                        orderLineItems: items.items.map((item: any) => ({
                             variant: {
                                 id: item.id,
                             },
@@ -106,34 +109,34 @@ export class OrdersService {
                         },
                         billingAddress: {
                             id: this.uuidService.generate(),
-                            firstName: "Mertcan",
-                            lastName: "Karaman",
-                            addressLine1: "Emirhan caddesi ömer bey apt no:41 daire:9",
-                            addressLine2: "Test Address 2",
-                            phone: "+905384814035",
+                            firstName: shippingAddress.firstName,
+                            lastName: shippingAddress.lastName,
+                            addressLine1: shippingAddress.addressLine1,
+                            addressLine2: shippingAddress.addressLine2,
+                            phone: shippingAddress.phone,
                             city: {
-                                id: "dcb9135c-4b84-4c06-9a42-f359317a9b78",
-                                name: "İstanbul"
+                                id: shippingAddress.cityId,
+                                name: shippingAddress.city
                             },
                             country: {
-                                id: "da8c5f2a-8d37-48a8-beff-6ab3793a1861",
-                                name: "Turkey"
+                                id: shippingAddress.countryId,
+                                name: shippingAddress.country
                             },
                             isDefault: true
                         },
                         shippingAddress: {
                             id: this.uuidService.generate(),
-                            firstName: "Mertcan",
-                            lastName: "Karaman",
-                            addressLine1: "Test Address",
-                            phone: "5555555555",
+                            firstName: shippingAddress.firstName,
+                            lastName: shippingAddress.lastName,
+                            addressLine1: shippingAddress.addressLine1,
+                            phone: shippingAddress.phone,
                             city: {
-                                name: "İstanbul"
+                                id: shippingAddress.cityId,
+                                name: shippingAddress.city
                             },
                             country: {
-                                code: 'TUR',
-                                id: 'da8c5f2a-8d37-48a8-beff-6ab3793a1861',
-                                name: 'Turkey'
+                                id: shippingAddress.countryId,
+                                name: shippingAddress.country
                             },
                             isDefault: false
                         },
@@ -285,5 +288,5 @@ export class OrdersService {
         }
     }
 
-    
+
 }
