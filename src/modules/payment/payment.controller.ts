@@ -148,8 +148,9 @@ export class PaymentController {
         }
     }
 
-    @Get('cancel')
-    async handleCancel(@Query() queryParams: any, @Res() res: Response) {
+    @Post('cancel')
+    async handleCancel(@Body() body: any, @Res() res: Response) {
+        console.log("queryParams", body);
         const cancelHtml = `
             <!DOCTYPE html>
             <html>

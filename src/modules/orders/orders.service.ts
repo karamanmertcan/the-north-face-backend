@@ -93,7 +93,10 @@ export class OrdersService {
                         id: this.uuidService.generate(),
                         orderLineItems: orderItems.map((item: any) => ({
                             variant: {
+                                // id: "e3402ae7-7a76-4e8a-8b32-4b1d5ca2b497",
+                                //selec
                                 id: item.selectedVariants[0].parentId,
+                                // name: item.selectedVariants.map(v => v.valueName).join(' / ')
                             },
                             price: parseFloat(item.price),
                             quantity: item.quantity
