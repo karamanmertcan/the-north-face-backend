@@ -33,6 +33,10 @@ export class ProductsService {
                                 name
                                 parentId
                             }
+                            productVariantTypes {
+                                variantTypeId
+                                variantValueIds
+                            }
                             brand {
                                 id
                                 name
@@ -92,7 +96,8 @@ export class ProductsService {
         try {
             const accessToken = await this.ikasService.getAccessToken();
 
-            const query = `
+            // Önce ürün detaylarını çek
+            const productQuery = `
                 query {
                     listProduct(id: { eq: "${id}" }) {
                         data {
@@ -106,6 +111,10 @@ export class ProductsService {
                             brandId
                             shortDescription
                             description
+                            productVariantTypes {
+                                variantTypeId
+                                variantValueIds
+                            }
                             variants {
                                 id
                                 sku
@@ -125,14 +134,13 @@ export class ProductsService {
                                 }
                             }
                         }
-                        
                     }
                 }
             `;
 
-            const response = await axios.post(
+            const productResponse = await axios.post(
                 'https://api.myikas.com/api/v1/admin/graphql',
-                { query },
+                { query: productQuery },
                 {
                     headers: {
                         'Content-Type': 'application/json',
@@ -141,16 +149,80 @@ export class ProductsService {
                 }
             );
 
-            console.log('response detail', response.data.data.listProduct.data[0])
+            const product = productResponse.data.data.listProduct.data[0];
 
-            const data = response.data.data.listProduct.data[0]
+            console.log('variantTypes', product);
 
-            const findProductIsFavorite = await this.favoriteModel.findOne({ productId: data.id })
+            // Varyant tiplerini çek
+            const variantTypes = await Promise.all(
+                product.productVariantTypes.map(async (variantType: any) => {
+                    const variantTypeQuery = `
+                        query {
+                            listVariantType(id: { eq: "${variantType.variantTypeId}" }) {
+                                id
+                                name
+                                values {
+                                    id
+                                    name
+                                    colorCode
+                                    thumbnailImageId
+                                }
+                            }
+                        }
+                    `;
 
+                    const variantTypeResponse = await axios.post(
+                        'https://api.myikas.com/api/v1/admin/graphql',
+                        { query: variantTypeQuery },
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${accessToken}`,
+                            }
+                        }
+                    );
+
+
+                    const variantTypeData = variantTypeResponse.data.data.listVariantType[0];
+
+                    console.log(variantTypeData);
+
+                    // Sadece ürünün sahip olduğu varyant değerlerini filtrele ve variant ID'lerini ekle
+                    const filteredValues = variantTypeData.values
+                        .filter((value: any) => variantType.variantValueIds.includes(value.id))
+                        .map((value: any, index: number) => {
+                            // Her değer için variants array'inden aynı indexteki variant'ı al
+                            const relatedVariant = product.variants[index];
+
+                            console.log('value:', value.name);
+                            console.log('relatedVariant:', relatedVariant?.id);
+
+                            return {
+                                id: value.id,
+                                name: value.name,
+                                colorCode: value.colorCode,
+                                thumbnailImageId: value.thumbnailImageId,
+                                parentId: relatedVariant?.id || null // Variant ID'sini parentId olarak ekle
+                            };
+                        });
+
+                    return {
+                        id: variantTypeData.id,
+                        name: variantTypeData.name,
+                        values: filteredValues
+                    };
+                })
+            );
+
+            const findProductIsFavorite = await this.favoriteModel.findOne({ productId: product.id });
+
+            // Normalize edilmiş varyantları ekle
             return {
-                ...data,
+                ...product,
+                normalizedVariants: variantTypes,
                 isFavorite: findProductIsFavorite ? true : false
-            }
+            };
+
         } catch (error) {
             console.error('Ürün detayı alma hatası:', error);
             throw error;

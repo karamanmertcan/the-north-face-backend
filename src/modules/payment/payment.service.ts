@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 import { OrdersService } from '../orders/orders.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from 'src/schemas/order.schema';
-
+import { PendingOrder, PendingOrderDocument } from 'src/schemas/pending-order.schema';
 import { Model } from 'mongoose';
 
 @Injectable()
@@ -18,7 +18,8 @@ export class PaymentService {
     constructor(
         private configService: ConfigService,
         private ordersService: OrdersService,
-        @InjectModel(Order.name) private orderModel: Model<OrderDocument>
+        @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+        @InjectModel(PendingOrder.name) private pendingOrderModel: Model<PendingOrderDocument>
     ) {
         this.apiUrl = this.configService.get('SIPAY_API_URL');
         this.merchantKey = this.configService.get('SIPAY_MERCHANT_KEY');
@@ -77,6 +78,17 @@ export class PaymentService {
     async create3DPayment(paymentData: any) {
         console.log("paymentData", paymentData);
         try {
+            // Ödeme başlamadan önce pending order oluştur
+            const pendingOrder = await this.pendingOrderModel.create({
+                invoiceId: paymentData.invoiceId,
+                userId: paymentData.user_id,
+                items: paymentData.items,
+                shippingAddress: paymentData.shippingAddress,
+                status: 'pending'
+            });
+
+            console.log("Created Pending Order:", pendingOrder);
+
             const hashKey = this.generateHashKey(
                 paymentData.amount.toString(),
                 '1',
@@ -85,8 +97,8 @@ export class PaymentService {
             );
 
             const appUrl = this.configService.get('APP_URL');
-            const returnUrl = `${appUrl}/payment/callback`;
-            const cancelUrl = `${appUrl}/payment/cancel`;
+            const returnUrl = `http://192.168.1.196:3000/payment/callback`;
+            const cancelUrl = `http://192.168.1.196:3000/payment/cancel`;
 
             console.log("hashKey", hashKey);
             console.log("returnUrl", returnUrl);
@@ -99,6 +111,7 @@ export class PaymentService {
                     <input type="hidden" name="currency_code" value="TRY">
                     <input type="hidden" name="invoice_id" value="${paymentData.invoiceId}">
                     <input type="hidden" name="invoice_description" value="${paymentData.description}">
+                    <input type="hidden" name="user_id" value="${paymentData.user_id}">
                     <input type="hidden" name="total" value="${paymentData.amount}">
                     <input type="hidden" name="installments_number" value="1">
                     <input type="hidden" name="cc_holder_name" value="${paymentData.cardHolder}">
@@ -108,9 +121,9 @@ export class PaymentService {
                     <input type="hidden" name="cvv" value="${paymentData.cvc}">
                     <input type="hidden" name="name" value="${paymentData.cardHolder.split(' ')[0]}">
                     <input type="hidden" name="surname" value="${paymentData.cardHolder.split(' ').slice(1).join(' ')}">
-                    <input type="hidden" name="bill_email" value="customer@example.com">
-                    <input type="hidden" name="bill_phone" value="5555555555">
-                    <input type="hidden" name="items" value='[{"name":"HikieWatch Payment","price":${paymentData.amount},"quantity":1}]'>
+                    <input type="hidden" name="bill_email" value="${paymentData.shippingAddress.email}">
+                    <input type="hidden" name="bill_phone" value="${paymentData.shippingAddress.phone}">
+                    <input type="hidden" name="items" value='${JSON.stringify(paymentData.items)}'>
                     <input type="hidden" name="return_url" value="${returnUrl}">
                     <input type="hidden" name="cancel_url" value="${cancelUrl}">
                     <input type="hidden" name="hash_key" value="${hashKey}">
@@ -128,8 +141,8 @@ export class PaymentService {
 
             return { html_content: formHtml };
         } catch (error) {
-            console.error('3D Ödeme hatası:', error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || '3D Ödeme işlemi başarısız');
+            console.error('3D Ödeme hatası:', error);
+            throw error;
         }
     }
 
@@ -137,39 +150,82 @@ export class PaymentService {
         try {
             const {
                 sipay_status,
-                payment_id,
                 order_id,
-                order_no,
                 invoice_id,
                 error_code,
-                error,
                 status_description,
                 amount,
                 credit_card_no
             } = callbackData;
 
-            console.log("callbackData", callbackData);
-
             if (sipay_status === '1' && error_code === '100') {
-                // Sipariş oluştur
-                // const orderResult = await this.ordersService.createOrder({
-                //     items: JSON.parse(callbackData.items || '[]'),
-                //     amount: parseFloat(amount)
-                // });
+                console.log("sipay_status", sipay_status);
+                // Pending order'ı bul
+                const pendingOrder = await this.pendingOrderModel.findOne({
+                    invoiceId: invoice_id
+                });
 
-                console.log("orderResult", order_no, order_id);
+                if (!pendingOrder) {
+                    throw new Error('Pending order not found');
+                }
+
+                // Kendi DB'mizde order oluştur
+                const order = await this.orderModel.create({
+                    userId: pendingOrder.userId,
+                    orderNumber: order_id,
+                    totalAmount: parseFloat(amount),
+                    items: pendingOrder.items,
+                    shippingAddress: pendingOrder.shippingAddress,
+                    status: 'processing',
+                    paymentId: order_id,
+                    isPaid: true,
+                    paidAt: new Date()
+                });
+
+                // İkas'ta order oluştur
+                const ikasOrder = await this.ordersService.createOrder({
+                    orderData: {
+                        amount: parseFloat(amount)
+                    },
+                    items: {
+                        items: pendingOrder.items
+                    },
+                    shippingAddress: pendingOrder.shippingAddress,
+                    userId: pendingOrder.userId,
+                    amount: parseFloat(amount)
+                });
+
+                console.log("ikasOrder", ikasOrder);
+
+                // Order'ı İkas ID ile güncelle
+                await order.updateOne({
+                    ikasOrderId: ikasOrder.id
+                });
+
+                console.log("order", order);
+
+                // Pending order'ı sil veya durumunu güncelle
+                await pendingOrder.updateOne({ status: 'completed' });
+
+                console.log("pendingOrder", pendingOrder);
 
                 return {
                     success: true,
-                    payment_id: payment_id || order_id,
-                    order_id: order_no,
+                    payment_id: order_id,
+                    order_id: order.orderNumber,
+                    ikas_order_id: ikasOrder.id,
                     invoice_id,
                     amount,
                     card_no: credit_card_no,
                     message: status_description
                 };
             } else {
-                throw new Error(error || 'Ödeme işlemi başarısız');
+                // Ödeme başarısızsa pending order'ı sil veya failed olarak işaretle
+                await this.pendingOrderModel.findOneAndUpdate(
+                    { invoiceId: invoice_id },
+                    { status: 'failed' }
+                );
+                throw new Error('Ödeme işlemi başarısız');
             }
         } catch (error) {
             console.error('3D Callback hatası:', error);

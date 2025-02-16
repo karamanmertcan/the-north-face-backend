@@ -20,12 +20,13 @@ export class Order {
 
     @Prop({
         type: [{
-            productId: { type: Types.ObjectId, ref: 'Product' },
-            variantId: { type: Types.ObjectId },
+            productId: String,
+            variantId: String,
             quantity: Number,
             price: Number,
             name: String,
-            image: String
+            image: String,
+            selectedVariants: [{ valueId: String, valueName: String }]
         }],
         required: true
     })

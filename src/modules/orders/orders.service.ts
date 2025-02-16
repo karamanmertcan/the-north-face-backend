@@ -19,15 +19,14 @@ export class OrdersService {
     async createOrder({ orderData, items, shippingAddress, userId, amount }: { orderData: any, items: any, shippingAddress: any, userId: any, amount: number }) {
         try {
             const accessToken = await this.ikasService.getAccessToken();
-            console.log('Order Data:', orderData); // Gelen veriyi logla
+            console.log('Order Data:', orderData);
+            console.log('Items type:', typeof items);
             console.log('Items:', items);
-            console.log('Shipping Address:', shippingAddress);
-            console.log('User ID:', userId);
 
-            // Veri validasyonu
-            if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
-                throw new Error('Sipariş ürünleri geçersiz');
-            }
+            // items'ı array'e çevir eğer değilse
+            const orderItems = items.items || items;
+
+            console.log('Order Items:', orderItems);
 
             const mutation = `
                 mutation CreateOrderWithTransactions($input: CreateOrderWithTransactionsInput!) {
@@ -90,37 +89,32 @@ export class OrdersService {
 
             const variables = {
                 input: {
-                    disableAutoCreateCustomer: true,
                     order: {
                         id: this.uuidService.generate(),
-                        orderLineItems: items.items.map((item: any) => ({
+                        orderLineItems: orderItems.map((item: any) => ({
                             variant: {
-                                id: item.id,
+                                id: item.selectedVariants[0].parentId,
                             },
                             price: parseFloat(item.price),
-                            quantity: parseInt(item.quantity)
+                            quantity: item.quantity
                         })),
-                        currencyCode: "TRY",
                         customer: {
-                            id: "4e9ca10b-f57f-4e14-be43-d27bfb9631e6",
-                            email: "mertcan@hikie.space",
-                            firstName: "Mertcan",
-                            lastName: "Karaman"
-                        },
-                        billingAddress: {
-                            id: this.uuidService.generate(),
                             firstName: shippingAddress.firstName,
                             lastName: shippingAddress.lastName,
-                            addressLine1: shippingAddress.addressLine1,
-                            addressLine2: shippingAddress.addressLine2,
+                            email: "customer@example.com"
+                        },
+                        billingAddress: {
+                            firstName: shippingAddress.firstName,
+                            lastName: shippingAddress.lastName,
                             phone: shippingAddress.phone,
+                            addressLine1: shippingAddress.addressLine1,
                             city: {
-                                id: shippingAddress.cityId,
-                                name: shippingAddress.city
+                                id: shippingAddress.city.id,
+                                name: shippingAddress.city.name
                             },
                             country: {
-                                id: shippingAddress.countryId,
-                                name: shippingAddress.country
+                                id: shippingAddress.country.id,
+                                name: shippingAddress.country.name
                             },
                             isDefault: true
                         },
@@ -128,15 +122,15 @@ export class OrdersService {
                             id: this.uuidService.generate(),
                             firstName: shippingAddress.firstName,
                             lastName: shippingAddress.lastName,
-                            addressLine1: shippingAddress.addressLine1,
                             phone: shippingAddress.phone,
+                            addressLine1: shippingAddress.addressLine1,
                             city: {
-                                id: shippingAddress.cityId,
-                                name: shippingAddress.city
+                                id: shippingAddress.city.id,
+                                name: shippingAddress.city.name
                             },
                             country: {
-                                id: shippingAddress.countryId,
-                                name: shippingAddress.country
+                                id: shippingAddress.country.id,
+                                name: shippingAddress.country.name
                             },
                             isDefault: false
                         },
@@ -175,8 +169,8 @@ export class OrdersService {
 
             return response.data.data.createOrderWithTransactions;
         } catch (error) {
-            console.error('Sipariş oluşturma hatası:', error.response?.data || error);
-            throw new Error('Sipariş oluşturulamadı: ' + (error.response?.data?.errors?.[0]?.message || error.message));
+            console.error('Sipariş oluşturma hatası:', error);
+            throw error;
         }
     }
 
