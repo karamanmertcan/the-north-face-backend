@@ -96,6 +96,13 @@ export class Order {
 
     @Prop()
     paidAt: Date;
+
+    @Prop({ type: Object, required: true })
+    shippingMethod: {
+        type: string;
+        name: string;
+        price: number;
+    };
 }
 
 export type OrderDocument = Order & Document;

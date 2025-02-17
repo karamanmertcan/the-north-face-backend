@@ -44,6 +44,13 @@ export class PendingOrder {
 
     @Prop({ default: 'pending' })
     status: string;
+
+    @Prop({ type: Object, required: true })
+    shippingMethod: {
+        type: string;
+        name: string;
+        price: number;
+    };
 }
 
 export type PendingOrderDocument = PendingOrder & Document;

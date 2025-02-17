@@ -16,7 +16,7 @@ export class OrdersService {
         this.ikasApiUrl = 'https://api.myikas.com/api/v1/admin/graphql';
     }
 
-    async createOrder({ orderData, items, shippingAddress, userId, amount }: { orderData: any, items: any, shippingAddress: any, userId: any, amount: number }) {
+    async createOrder({ orderData, items, shippingAddress, userId, amount, shippingMethod }: { orderData: any, items: any, shippingAddress: any, userId: any, amount: number, shippingMethod: any }) {
         try {
             const accessToken = await this.ikasService.getAccessToken();
             console.log('Order Data:', orderData);
@@ -139,8 +139,8 @@ export class OrdersService {
                         },
                         shippingMethod: "SHIPMENT",
                         shippingLines: [{
-                            title: "Standart Kargo",
-                            price: 0
+                            title: shippingMethod.name,
+                            price: shippingMethod.price
                         }]
                     },
                     transactions: [{
@@ -163,6 +163,7 @@ export class OrdersService {
             });
 
             console.log('IKAS Order Response:', JSON.stringify(response.data, null, 2));
+
 
             if (response.data.errors) {
                 const error = response.data.errors[0];

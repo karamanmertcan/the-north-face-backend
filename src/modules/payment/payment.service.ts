@@ -84,21 +84,23 @@ export class PaymentService {
                 userId: paymentData.user_id,
                 items: paymentData.items,
                 shippingAddress: paymentData.shippingAddress,
-                status: 'pending'
+                status: 'pending',
+                shippingMethod: paymentData.shippingMethod
             });
 
             console.log("Created Pending Order:", pendingOrder);
 
             const hashKey = this.generateHashKey(
-                paymentData.amount.toString(),
+                '1',
                 '1',
                 'TRY',
                 paymentData.invoiceId
             );
 
             const appUrl = this.configService.get('APP_URL');
-            const returnUrl = `${appUrl}/payment/callback`;
-            const cancelUrl = `${appUrl}/payment/cancel`;
+
+            const returnUrl = `http://10.1.1.46:3000/payment/callback`;
+            const cancelUrl = `http://10.1.1.46:3000/payment/cancel`;
 
             console.log("hashKey", hashKey);
             console.log("returnUrl", returnUrl);
@@ -112,7 +114,7 @@ export class PaymentService {
                     <input type="hidden" name="invoice_id" value="${paymentData.invoiceId}">
                     <input type="hidden" name="invoice_description" value="${paymentData.description}">
                     <input type="hidden" name="user_id" value="${paymentData.user_id}">
-                    <input type="hidden" name="total" value="${paymentData.amount}">
+                    <input type="hidden" name="total" value="1">
                     <input type="hidden" name="installments_number" value="1">
                     <input type="hidden" name="cc_holder_name" value="${paymentData.cardHolder}">
                     <input type="hidden" name="cc_no" value="${paymentData.cardNumber}">
@@ -121,9 +123,9 @@ export class PaymentService {
                     <input type="hidden" name="cvv" value="${paymentData.cvc}">
                     <input type="hidden" name="name" value="${paymentData.cardHolder.split(' ')[0]}">
                     <input type="hidden" name="surname" value="${paymentData.cardHolder.split(' ').slice(1).join(' ')}">
-                    <input type="hidden" name="bill_email" value="${paymentData.shippingAddress.email}">
+                    <input type="hidden" name="bill_email" value="${paymentData.email}">
                     <input type="hidden" name="bill_phone" value="${paymentData.shippingAddress.phone}">
-                    <input type="hidden" name="items" value='${JSON.stringify(paymentData.items)}'>
+                    <input type="hidden" name="items" value='[{"id": "1", "quantity": 1, "price": 1, "name": "Test Product","description": "Test Product Description"}]'>
                     <input type="hidden" name="return_url" value="${returnUrl}">
                     <input type="hidden" name="cancel_url" value="${cancelUrl}">
                     <input type="hidden" name="hash_key" value="${hashKey}">
@@ -158,6 +160,8 @@ export class PaymentService {
                 credit_card_no
             } = callbackData;
 
+            console.log("callbackData", callbackData);
+
             if (sipay_status === '1' && error_code === '100') {
                 console.log("sipay_status", sipay_status);
                 // Pending order'ı bul
@@ -179,7 +183,8 @@ export class PaymentService {
                     status: 'processing',
                     paymentId: order_id,
                     isPaid: true,
-                    paidAt: new Date()
+                    paidAt: new Date(),
+                    shippingMethod: pendingOrder.shippingMethod
                 });
 
                 // İkas'ta order oluştur
@@ -192,14 +197,16 @@ export class PaymentService {
                     },
                     shippingAddress: pendingOrder.shippingAddress,
                     userId: pendingOrder.userId,
-                    amount: parseFloat(amount)
+                    amount: parseFloat(amount),
+                    shippingMethod: pendingOrder.shippingMethod
                 });
 
                 console.log("ikasOrder", ikasOrder);
 
                 // Order'ı İkas ID ile güncelle
                 await order.updateOne({
-                    ikasOrderId: ikasOrder.id
+                    ikasOrderId: ikasOrder.id,
+                    status: 'completed'
                 });
 
                 console.log("order", order);
