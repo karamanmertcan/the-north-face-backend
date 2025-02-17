@@ -101,8 +101,8 @@ export class PaymentService {
 
             const appUrl = this.configService.get('APP_URL');
 
-            const returnUrl = `http://10.1.1.46:3000/payment/callback`;
-            const cancelUrl = `http://10.1.1.46:3000/payment/cancel`;
+            const returnUrl = `${appUrl}/payment/callback`;
+            const cancelUrl = `${appUrl}/payment/cancel`;
 
             console.log("hashKey", hashKey);
             console.log("returnUrl", returnUrl);
