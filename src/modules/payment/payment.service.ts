@@ -7,6 +7,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from 'src/schemas/order.schema';
 import { PendingOrder, PendingOrderDocument } from 'src/schemas/pending-order.schema';
 import { Model } from 'mongoose';
+import { User, UserDocument } from 'src/schemas/user.schema';
 
 @Injectable()
 export class PaymentService {
@@ -19,7 +20,8 @@ export class PaymentService {
         private configService: ConfigService,
         private ordersService: OrdersService,
         @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
-        @InjectModel(PendingOrder.name) private pendingOrderModel: Model<PendingOrderDocument>
+        @InjectModel(PendingOrder.name) private pendingOrderModel: Model<PendingOrderDocument>,
+        @InjectModel(User.name) private userModel: Model<UserDocument>
     ) {
         this.apiUrl = this.configService.get('SIPAY_API_URL');
         this.merchantKey = this.configService.get('SIPAY_MERCHANT_KEY');
@@ -184,7 +186,12 @@ export class PaymentService {
                     paymentId: order_id,
                     isPaid: true,
                     paidAt: new Date(),
-                    shippingMethod: pendingOrder.shippingMethod
+                    shippingMethod: pendingOrder.shippingMethod,
+                    invoiceId: invoice_id
+                });
+
+                const user = await this.userModel.findById({
+                    _id: pendingOrder.userId
                 });
 
                 // İkas'ta order oluştur
@@ -195,6 +202,7 @@ export class PaymentService {
                     items: {
                         items: pendingOrder.items
                     },
+                    email: user.email,
                     shippingAddress: pendingOrder.shippingAddress,
                     userId: pendingOrder.userId,
                     amount: parseFloat(amount),
@@ -206,6 +214,7 @@ export class PaymentService {
                 // Order'ı İkas ID ile güncelle
                 await order.updateOne({
                     ikasOrderId: ikasOrder.id,
+                    invoiceId: invoice_id,
                     status: 'completed'
                 });
 

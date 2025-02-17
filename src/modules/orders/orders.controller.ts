@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Get, Request } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Get, Request, Param } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 
@@ -16,5 +16,28 @@ export class OrdersController {
   @Get('my-orders')
   async getMyOrders(@Request() req) {
     return this.ordersService.getUserOrders(req.user.email);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getOrderById(@Param('id') id: string) {
+    return this.ordersService.getOrderById(id);
+  }
+
+  @Post(':id/refund')
+  @UseGuards(JwtAuthGuard)
+  async refundOrder(
+    @Param('id') orderId: string,
+    @Body() refundData: { orderLineItemId: string; quantity: number; price: number, stockLocationId: string }
+  ) {
+    console.log('Refund Data:', orderId);
+    return this.ordersService.refundOrder(
+      orderId,
+      refundData.orderLineItemId,
+      refundData.quantity,
+      refundData.price,
+      refundData.stockLocationId
+    );
   }
 }

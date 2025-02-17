@@ -15,8 +15,18 @@ export class Order {
     @Prop({ required: true })
     orderNumber: string;
 
+    @Prop({ required: false })
+    invoiceId: string;
+
     @Prop({ required: true })
     totalAmount: number;
+
+    @Prop({
+        type: Object,
+        required: false
+    })
+    refundInfo: Object
+
 
     @Prop({
         type: [{

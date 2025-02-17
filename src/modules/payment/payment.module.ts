@@ -16,7 +16,8 @@ import { PendingOrder, PendingOrderSchema } from 'src/schemas/pending-order.sche
         UuidModule,
         MongooseModule.forFeature([
             { name: Order.name, schema: OrderSchema },
-            { name: PendingOrder.name, schema: PendingOrderSchema }
+            { name: PendingOrder.name, schema: PendingOrderSchema },
+            { name: User.name, schema: UserSchema },
         ])
     ],
     controllers: [PaymentController],

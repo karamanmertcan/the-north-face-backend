@@ -18,6 +18,7 @@ import { IkasModule } from './modules/ikas/ikas.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { UuidModule } from 'nestjs-uuid';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -43,7 +44,8 @@ import { UuidModule } from 'nestjs-uuid';
     FavoritesModule,
     IkasModule,
     PaymentModule,
-    OrdersModule
+    OrdersModule,
+    CustomersModule
   ],
   controllers: [AppController],
   providers: [AppService],
