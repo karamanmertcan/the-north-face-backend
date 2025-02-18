@@ -139,8 +139,6 @@ export class OrdersService {
                 }
             `;
 
-            console.log("orderitems", orderItems.map(item => item.selectedVariants[0]?.parentId))
-
             const variables = {
                 input: {
                     order: {
