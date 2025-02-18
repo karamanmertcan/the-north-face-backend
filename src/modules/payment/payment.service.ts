@@ -92,17 +92,21 @@ export class PaymentService {
 
             console.log("Created Pending Order:", pendingOrder);
 
+            console.log("paymentData.invoiceId", paymentData.invoiceId);
+
             const hashKey = this.generateHashKey(
-                '1',
+                // paymentData.amount,
+                "1",
                 '1',
                 'TRY',
                 paymentData.invoiceId
             );
 
             const appUrl = this.configService.get('APP_URL');
+            const appUrlLocal = "http://10.1.1.46"
 
-            const returnUrl = `${appUrl}/payment/callback`;
-            const cancelUrl = `${appUrl}/payment/cancel`;
+            const returnUrl = `${appUrlLocal}:3000/payment/callback`;
+            const cancelUrl = `${appUrlLocal}:3000/payment/cancel`;
 
             console.log("hashKey", hashKey);
             console.log("returnUrl", returnUrl);
@@ -127,7 +131,22 @@ export class PaymentService {
                     <input type="hidden" name="surname" value="${paymentData.cardHolder.split(' ').slice(1).join(' ')}">
                     <input type="hidden" name="bill_email" value="${paymentData.email}">
                     <input type="hidden" name="bill_phone" value="${paymentData.shippingAddress.phone}">
-                    <input type="hidden" name="items" value='[{"id": "1", "quantity": 1, "price": 1, "name": "Test Product","description": "Test Product Description"}]'>
+                    <input type="hidden" name="items" value='${JSON.stringify([
+                {
+                    name: paymentData.items[0].name,
+                    price: String(1),
+                    quantity: Number(paymentData.items[0].quantity),
+                    type: "1",
+                    currency_code: "TRY"
+                },
+                {
+                    name: paymentData.shippingMethod.name,
+                    price: String(paymentData.shippingMethod.price),
+                    quantity: 1,
+                    type: "2",
+                    currency_code: "TRY"
+                }
+            ])}'>
                     <input type="hidden" name="return_url" value="${returnUrl}">
                     <input type="hidden" name="cancel_url" value="${cancelUrl}">
                     <input type="hidden" name="hash_key" value="${hashKey}">

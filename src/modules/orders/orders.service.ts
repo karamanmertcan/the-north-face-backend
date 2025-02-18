@@ -7,7 +7,6 @@ import { Order, OrderDocument } from 'src/schemas/order.schema';
 import { IkasService } from 'src/services/ikas.service';
 import * as crypto from 'crypto';
 
-
 import { Model } from 'mongoose';
 import { User, UserDocument } from 'src/schemas/user.schema';
 
@@ -38,8 +37,6 @@ export class OrdersService {
     private generateHashKey(total: string, installment: string, currency_code: string, invoice_id: string) {
         try {
             const data = `${total}|${installment}|${currency_code}|${this.merchantKey}|${invoice_id}`;
-
-            console.log('Data:', data);
 
             const iv = crypto.createHash('sha1')
                 .update(String(Math.random()))
@@ -79,7 +76,6 @@ export class OrdersService {
             console.log('Items type:', typeof items);
             console.log('Items:', items);
 
-            // items'ı array'e çevir eğer değilse
             const orderItems = items.items || items;
 
             console.log('Order Items:', orderItems);
@@ -143,16 +139,15 @@ export class OrdersService {
                 }
             `;
 
+            console.log("orderitems", orderItems.map(item => item.selectedVariants[0]?.parentId))
+
             const variables = {
                 input: {
                     order: {
                         id: this.uuidService.generate(),
                         orderLineItems: orderItems.map((item: any) => ({
                             variant: {
-                                // id: "e3402ae7-7a76-4e8a-8b32-4b1d5ca2b497",
-                                //selec
-                                id: item.selectedVariants[0].parentId,
-                                // name: item.selectedVariants.map(v => v.valueName).join(' / ')
+                                id: item.selectedVariants[0]?.parentId
                             },
                             price: parseFloat(item.price),
                             quantity: item.quantity
@@ -238,13 +233,11 @@ export class OrdersService {
         try {
             const accessToken = await this.ikasService.getAccessToken();
 
-            // Önce kullanıcıyı bul
             const user = await this.userModel.findOne({ email });
             if (!user) {
                 throw new Error('Kullanıcı bulunamadı');
             }
 
-            // IKAS'tan siparişleri al
             const query = `
                 query ListOrder($customerEmail: StringFilterInput) {
                     listOrder(customerEmail: $customerEmail) {
@@ -256,6 +249,12 @@ export class OrdersService {
                             totalFinalPrice
                             currencyCode
                             orderedAt
+                            orderPackages{
+                                id
+                                orderPackageNumber
+                                orderPackageFulfillStatus
+                                orderLineItemIds
+                            }
                             orderLineItems {
                                 id
                                 quantity
@@ -331,22 +330,19 @@ export class OrdersService {
 
             const ikasOrders = response.data.data.listOrder.data;
 
-            // DB'deki siparişleri kontrol et
             const dbOrders = await this.orderModel.find({
                 userId: user._id
             });
 
-            // IKAS siparişlerini DB ile senkronize et
             for (const ikasOrder of ikasOrders) {
                 const existingOrder = dbOrders.find(
                     dbOrder => dbOrder.ikasOrderId === ikasOrder.id
                 );
 
                 if (!existingOrder) {
-                    // Yeni siparişi DB'ye ekle
                     const orderData = {
                         ikasOrderId: ikasOrder.id,
-                        ikasOrderNumber: ikasOrder.orderNumber, // IKAS order number'ı ayrı saklıyoruz
+                        ikasOrderNumber: ikasOrder.orderNumber,
                         status: ikasOrder.status,
                         items: ikasOrder.orderLineItems,
                         shippingAddress: ikasOrder.shippingAddress,
@@ -362,7 +358,6 @@ export class OrdersService {
                 }
             }
 
-            // Güncel IKAS siparişlerini dön
             return ikasOrders;
 
         } catch (error) {
@@ -375,20 +370,6 @@ export class OrdersService {
     async getOrderById(orderId: string) {
         try {
             const accessToken = await this.ikasService.getAccessToken();
-
-
-            // const order = await this.orderModel.findOne({
-            //     ikasOrderId: orderId
-            // });
-
-            // if (!order) {
-            //     throw new Error('Sipariş bulunamadı');
-            // }
-
-            // console.log('Order:', order);
-
-
-
 
             const query = `
                 query ListOrder($listOrderId: StringFilterInput) {
@@ -458,12 +439,12 @@ export class OrdersService {
                                 phone
                             }
                             shippingMethod
-                            stockLocationId
                             paymentMethods {
                                 price
                                 type
                             }
                             orderPackages {
+                                id
                                 orderPackageNumber
                                 orderPackageFulfillStatus
                                 createdAt
@@ -489,14 +470,13 @@ export class OrdersService {
                 }
             });
 
-            console.log('IKAS Order Response:', JSON.stringify(response.data, null, 2));
+            console.log('IKAS Order By Id Response:', JSON.stringify(response.data, null, 2));
 
             if (response.data.errors) {
                 const error = response.data.errors[0];
                 throw new Error(`IKAS Error: ${error.message}`);
             }
 
-            // İlk siparişi döndür çünkü ID'ye göre arama yapıyoruz
             return response.data.data.listOrder.data[0];
         } catch (error) {
             console.error('Sipariş alınırken hata:', error.response?.data || error);
@@ -541,30 +521,25 @@ export class OrdersService {
             }
 
             const getTokenAppId = await this.getToken();
-            console.log('Token:', getTokenAppId);
+
+            const hashKey = this.generateHashKey(
+                "1.00",
+                "1",
+                "TRY",
+                order.invoiceId
+            )
 
             const data = {
                 invoice_id: order.invoiceId,
-                amount: "",
-                app_id: this.appKey,
-                app_secret: this.appSecret,
+                amount: "1",
                 merchant_key: this.merchantKey,
-                hash_key: this.generateHashKey(
-                    "349",
-                    "1",
-                    "TRY",
-                    order.invoiceId
-                ),
-                refund_transaction_id: "",
-                refund_web_hook_key: "string"
             }
 
             console.log('Data:', data);
 
 
 
-            // Önce Sipay Refund
-            const sipayResponse = await axios.post(this.apiUrl + '/api/refund', data, {
+            const sipayResponse = await axios.post('https://app.sipay.com.tr/ccpayment' + '/api/refund', data, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${(await this.getToken()).token}`
@@ -573,7 +548,6 @@ export class OrdersService {
 
             console.log('Sipay Response:', sipayResponse.data);
 
-            // Sipay başarılı ise IKAS Refund
             if (sipayResponse.data.status_code === 100) {
                 const accessToken = await this.ikasService.getAccessToken();
 
@@ -625,7 +599,6 @@ export class OrdersService {
                     throw new Error(`IKAS Error: ${ikasResponse.data.errors[0].message}`);
                 }
 
-                // DB'deki siparişi güncelle
                 await this.orderModel.findOneAndUpdate(
                     { ikasOrderId: orderId },
                     {
