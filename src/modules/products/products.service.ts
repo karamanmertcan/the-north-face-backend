@@ -342,7 +342,7 @@ export class ProductsService {
                         { 'tags.name': searchRegex }
                     ]
                 })
-                .select('id name brand variants')
+                .select('_id name brand variants')
                 .skip(skip)
                 .limit(limit)
                 .lean()
