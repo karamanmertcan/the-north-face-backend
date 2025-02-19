@@ -72,6 +72,24 @@ export class CommentsService {
     }
 
 
+    async dislikeComment(commentId: string, userId: string) {
+        const comment = await this.commentModel.findById(commentId);
+
+        if (!comment) {
+            throw new Error('Comment not found');
+        }
+
+        return this.commentModel.findByIdAndUpdate(
+            commentId,
+            {
+                $pull: { likedBy: userId },
+                $inc: { likes: -1 },
+            },
+            { new: true }
+        ).populate('user');
+    }
+
+
     async getCommentsCount(videoId: string) {
         const comments = await this.commentModel.countDocuments({ video: videoId });
         console.log('comments', comments)

@@ -44,6 +44,15 @@ export class CommentsController {
     return this.commentsService.likeComment(id, currentUser._id);
   }
 
+  @Put(':id/dislike')
+  @UseGuards(JwtAuthGuard)
+  async dislikeComment(
+    @Param('id') id: string,
+    @CurrentUser() currentUser,
+  ) {
+    return this.commentsService.dislikeComment(id, currentUser._id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('video/:videoId/count')
   async getCommentsCount(@Param('videoId') videoId: string) {

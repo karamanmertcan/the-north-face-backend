@@ -19,9 +19,11 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { UuidModule } from 'nestjs-uuid';
 import { CustomersModule } from './modules/customers/customers.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -45,7 +47,8 @@ import { CustomersModule } from './modules/customers/customers.module';
     IkasModule,
     PaymentModule,
     OrdersModule,
-    CustomersModule
+    CustomersModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],

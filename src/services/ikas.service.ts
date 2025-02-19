@@ -51,6 +51,31 @@ export class IkasService {
         }
     }
 
+    async makeRequest(query: string, variables: any = {}) {
+        try {
+            const accessToken = await this.getAccessToken();
+
+            const response = await axios.post(
+                this.ikasApiUrl,
+                {
+                    query,
+                    variables
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+            return response;
+        } catch (error) {
+            console.error('IKAS API request error:', error.response?.data || error);
+            throw error;
+        }
+    }
+
     async createIkasUser(userData: {
         email: string;
         password: string;
