@@ -128,7 +128,7 @@ export class AuthService {
 
                 // Create main user
                 const hashedPassword = await bcrypt.hash(password, 10);
-                const user = await this.userModel.create({
+                const user: any = await this.userModel.create({
                     email,
                     username: finalUsername,
                     password: hashedPassword,
@@ -137,6 +137,7 @@ export class AuthService {
                     ikasUserId: ikasUser._id,
                 });
 
+
                 const payload = {
                     email: user.email,
                     id: user._id,
@@ -144,7 +145,7 @@ export class AuthService {
 
                 return {
                     token: this.jwtService.sign(payload),
-                    user: user
+                    user: user?.user
                 };
             }
         } catch (error) {
@@ -161,7 +162,9 @@ export class AuthService {
             lastName
         });
 
-        const payload = { email: user.email, sub: user._id };
+        console.log('user data 2', user)
+
+        const payload = { email: user.email, id: user._id };
         return {
             token: this.jwtService.sign(payload),
             user: user
@@ -178,13 +181,10 @@ export class AuthService {
         }
 
         const payload = {
-            email: validatedUser.email,
-            id: validatedUser._id,
+            email: validatedUser?.email,
+            id: validatedUser?._id,
         };
 
-        const userData = {
-            ...validatedUser,
-        }
 
         console.log('userData', validatedUser)
 
@@ -279,12 +279,11 @@ export class AuthService {
                     });
                 }
 
+                console.log('validated user 3', user)
 
 
-                return {
-                    user: user,
-                    ikasToken: ikasToken.token // Just return the token string for JWT
-                };
+
+                return user;
             }
         } catch (error) {
             console.error('IKAS validation error:', error);
