@@ -1,5 +1,8 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ProductsService } from './products.service';
+import { CurrentUser } from 'src/decorators/current-user';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 
 @Controller('products')
 export class ProductsController {
@@ -47,5 +50,14 @@ export class ProductsController {
   @Get('community')
   async getCommunityProducts() {
     return this.productsService.getCommunityProducts();
+  }
+
+  @Get('category/:id')
+  @UseGuards(JwtAuthGuard)
+  async getProductByCategorieId(
+    @Param('id') id: string,
+    @CurrentUser() currentUser
+  ) {
+    return this.productsService.getProductByCategorieId(id, currentUser._id);
   }
 }

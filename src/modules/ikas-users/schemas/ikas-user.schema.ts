@@ -2,6 +2,15 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
+export class IkasToken {
+    @Prop()
+    token: string;
+
+    @Prop()
+    tokenExpiry: number;
+}
+
+@Schema({ timestamps: true })
 export class IkasUser extends Document {
     @Prop({ required: true })
     ikasId: string;
@@ -99,11 +108,8 @@ export class IkasUser extends Document {
     @Prop({ type: [String], default: [] })
     tagIds: string[];
 
-    @Prop()
-    ikasToken: string;
-
-    @Prop()
-    ikasTokenExpiry: number;
+    @Prop({ type: Object })
+    ikasToken: IkasToken;
 
     @Prop({ type: [String], default: [] })
     customerGroupIds: string[];
@@ -113,7 +119,6 @@ export class IkasUser extends Document {
 }
 
 export type IkasUserDocument = IkasUser & Document;
-
 
 export const IkasUserSchema = SchemaFactory.createForClass(IkasUser);
 

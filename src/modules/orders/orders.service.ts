@@ -6,6 +6,7 @@ import { UuidService } from 'nestjs-uuid';
 import { Order, OrderDocument } from 'src/schemas/order.schema';
 import { IkasService } from 'src/services/ikas.service';
 import * as crypto from 'crypto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { Model } from 'mongoose';
 import { User, UserDocument } from 'src/schemas/user.schema';
@@ -228,254 +229,31 @@ export class OrdersService {
     }
 
     async getUserOrders(email: string) {
+        console.log('getUserOrders', email)
         try {
-            const accessToken = await this.ikasService.getAccessToken();
-
-            const user = await this.userModel.findOne({ email });
-            if (!user) {
-                throw new Error('Kullanıcı bulunamadı');
-            }
-
-            const query = `
-                query ListOrder($customerEmail: StringFilterInput) {
-                    listOrder(customerEmail: $customerEmail) {
-                        data {
-                            id
-                            orderNumber
-                            status
-                            totalPrice
-                            totalFinalPrice
-                            currencyCode
-                            orderedAt
-                            orderPackages{
-                                id
-                                orderPackageNumber
-                                orderPackageFulfillStatus
-                                orderLineItemIds
-                            }
-                            orderLineItems {
-                                id
-                                quantity
-                                price
-                                finalPrice
-                                variant {
-                                    id
-                                    name
-                                    mainImageId
-                                    brand {
-                                        name
-                                    }
-                                }
-                            }
-                            billingAddress {
-                                firstName
-                                lastName
-                                addressLine1
-                                phone
-                                city {
-                                    name
-                                }
-                                country {
-                                    name
-                                }
-                            }
-                            shippingAddress {
-                                firstName
-                                lastName
-                                addressLine1
-                                phone
-                                city {
-                                    name
-                                }
-                                country {
-                                    name
-                                }
-                            }
-                            customer {
-                                email
-                                firstName
-                                lastName
-                            }
-                            shippingMethod
-                            paymentMethods {
-                                price
-                                type
-                            }
-                        }
-                    }
-                }
-            `;
-
-            const variables = {
-                customerEmail: {
-                    eq: email
-                }
-            };
-
-            const response = await axios.post(this.ikasApiUrl, {
-                query,
-                variables
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                }
+            const orders = await this.orderModel.find({
+                'customer.email': email
             });
-
-            if (response.data.errors) {
-                throw new Error(response.data.errors[0].message);
-            }
-
-            const ikasOrders = response.data.data.listOrder.data;
-
-            const dbOrders = await this.orderModel.find({
-                userId: user._id
-            });
-
-            for (const ikasOrder of ikasOrders) {
-                const existingOrder = dbOrders.find(
-                    dbOrder => dbOrder.ikasOrderId === ikasOrder.id
-                );
-
-                if (!existingOrder) {
-                    const orderData = {
-                        ikasOrderId: ikasOrder.id,
-                        ikasOrderNumber: ikasOrder.orderNumber,
-                        status: ikasOrder.status,
-                        items: ikasOrder.orderLineItems,
-                        shippingAddress: ikasOrder.shippingAddress,
-                        customer: ikasOrder.customer,
-                        totalAmount: ikasOrder.totalFinalPrice,
-                        shippingMethod: ikasOrder.shippingMethod,
-                        createdAt: new Date(parseInt(ikasOrder.orderedAt)),
-                        userId: user._id,
-                        orderNumber: `HS-${this.uuidService.generate()}`,
-                    };
-
-                    await this.orderModel.create(orderData);
-                }
-            }
-
-            return ikasOrders;
-
+            console.log('orders', orders)
+            return orders;
         } catch (error) {
-            console.error('Siparişler alınırken hata:', error);
-            throw new Error('Siparişler alınamadı: ' + error.message);
+            console.error('Sipariş listeleme hatası:', error);
+            throw error;
         }
     }
 
 
     async getOrderById(orderId: string) {
+        console.log('orderId', orderId)
         try {
-            const accessToken = await this.ikasService.getAccessToken();
-
-            const query = `
-                query ListOrder($listOrderId: StringFilterInput) {
-                    listOrder(id: $listOrderId) {
-                        data {
-                            id
-                            orderNumber
-                            status
-                            totalPrice
-                            totalFinalPrice
-                            currencyCode
-                            orderedAt
-                            orderLineItems {
-                                id
-                                quantity
-                                price
-                                finalPrice
-                                variant {
-                                    id
-                                    name
-                                    mainImageId
-                                    brand {
-                                        name
-                                    }
-                                    variantValues {
-                                        variantValueName
-                                        variantTypeName
-                                    }
-                                }
-                            }
-                            billingAddress {
-                                firstName
-                                lastName
-                                addressLine1
-                                phone
-                                postalCode
-                                city {
-                                    name
-                                }
-                                district {
-                                    name
-                                }
-                                country {
-                                    name
-                                }
-                            }
-                            shippingAddress {
-                                firstName
-                                lastName
-                                addressLine1
-                                phone
-                                postalCode
-                                city {
-                                    name
-                                }
-                                district {
-                                    name
-                                }
-                                country {
-                                    name
-                                }
-                            }
-                            customer {
-                                email
-                                firstName
-                                lastName
-                                phone
-                            }
-                            shippingMethod
-                            paymentMethods {
-                                price
-                                type
-                            }
-                            orderPackages {
-                                id
-                                orderPackageNumber
-                                orderPackageFulfillStatus
-                                createdAt
-                            }
-                        }
-                    }
-                }
-            `;
-
-            const variables = {
-                listOrderId: {
-                    eq: orderId
-                }
-            };
-
-            const response = await axios.post(this.ikasApiUrl, {
-                query,
-                variables
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                }
+            const getUserOrders = await this.orderModel.findOne({
+                ikasOrderId: orderId
             });
 
-            console.log('IKAS Order By Id Response:', JSON.stringify(response.data, null, 2));
+            console.log('user orders ===>', getUserOrders)
 
-            if (response.data.errors) {
-                const error = response.data.errors[0];
-                throw new Error(`IKAS Error: ${error.message}`);
-            }
+            return getUserOrders;
 
-            return response.data.data.listOrder.data[0];
         } catch (error) {
             console.error('Sipariş alınırken hata:', error.response?.data || error);
             throw new Error('Sipariş alınamadı: ' + (error.response?.data?.errors?.[0]?.message || error.message));
@@ -625,6 +403,267 @@ export class OrdersService {
         } catch (error) {
             console.error('Sipariş iadesi yapılırken hata:', error.response?.data || error);
             throw new Error('Sipariş iadesi yapılamadı: ' + (error.response?.data?.errors?.[0]?.message || error.message));
+        }
+    }
+
+    @Cron(CronExpression.EVERY_6_HOURS)
+    async syncOrders() {
+        try {
+            console.log('Starting order sync...');
+            let page = 1;
+            let hasNext = true;
+
+            while (hasNext) {
+                const response = await this.ikasService.makeRequest(
+                    `query {
+                        listOrder(
+                            pagination: {
+                                page: ${page}
+                            }
+                        ) {
+                            data {
+                                id
+                                orderNumber
+                                status
+                                orderPaymentStatus
+                                totalPrice
+                                totalFinalPrice
+                                netTotalFinalPrice
+                                createdAt
+                                orderedAt
+                                cancelledAt
+                                cancelReason
+                                note
+                                customer {
+                                    id
+                                    email
+                                    firstName
+                                    lastName
+                                    fullName
+                                    phone
+                                    preferredLanguage
+                                    isGuestCheckout
+                                }
+                                billingAddress {
+                                    firstName
+                                    lastName
+                                    phone
+                                    addressLine1
+                                    addressLine2
+                                    city {
+                                        id
+                                        name
+                                        code
+                                    }
+                                    district {
+                                        id
+                                        name
+                                        code
+                                    }
+                                    state {
+                                        id
+                                        name
+                                        code
+                                    }
+                                    country {
+                                        id
+                                        name
+                                        code
+                                        iso2
+                                        iso3
+                                    }
+                                    postalCode
+                                    company
+                                    taxNumber
+                                    taxOffice
+                                    identityNumber
+                                }
+                                shippingAddress {
+                                    firstName
+                                    lastName
+                                    phone
+                                    addressLine1
+                                    addressLine2
+                                    city {
+                                        id
+                                        name
+                                        code
+                                    }
+                                    district {
+                                        id
+                                        name
+                                        code
+                                    }
+                                    state {
+                                        id
+                                        name
+                                        code
+                                    }
+                                    country {
+                                        id
+                                        name
+                                        code
+                                        iso2
+                                        iso3
+                                    }
+                                    postalCode
+                                    company
+                                    taxNumber
+                                    taxOffice
+                                    identityNumber
+                                }
+                                orderLineItems {
+                                    id
+                                    quantity
+                                    price
+                                    finalPrice
+                                    unitPrice
+                                    finalUnitPrice
+                                    discountPrice
+                                    status
+                                    variant {
+                                        id
+                                        sku
+                                        name
+                                        mainImageId
+                                        productId
+                                        brand {
+                                            id
+                                            name
+                                        }
+                                    }
+                                }
+                                orderPackages {
+                                    id
+                                    orderPackageNumber
+                                    orderPackageFulfillStatus
+                                    trackingInfo {
+                                        cargoCompany
+                                        trackingNumber
+                                        trackingLink
+                                    }
+                                }
+                                shippingLines {
+                                    title
+                                    price
+                                    finalPrice
+                                    taxValue
+                                }
+                            }
+                            hasNext
+                            page
+                            limit
+                            count
+                        }
+                    }`
+                );
+
+                const orders = response?.data?.data?.listOrder?.data || [];
+                hasNext = response?.data?.data?.listOrder?.hasNext;
+
+
+                // Update or create orders in database
+                for (const order of orders) {
+                    try {
+                        // Find the user by IKAS ID
+                        const user = await this.userModel.findOne({ ikasUserId: order.customer?.id });
+                        console.log('orderlineitems', order.orderLineItems?.map(item => ({
+                            productId: item?.variant?.productId,
+                            variantId: item?.variant?.id,
+                            quantity: item?.quantity,
+                            price: item?.finalPrice,
+                            mainImageId: item?.variant?.mainImageId,
+                            name: item?.variant?.name,
+                            brand: item?.variant?.brand ? {
+                                id: item?.variant?.brand?.id,
+                                name: item?.variant?.brand?.name
+                            } : null,
+                            selectedVariants: item?.variant?.variantValues?.map(variant => ({
+                                valueId: variant?.variantValueId,
+                                valueName: variant?.variantValueName
+                            })) || []
+                        })))
+                        await this.orderModel.findOneAndUpdate(
+                            { ikasOrderId: order.id },
+                            {
+                                ikasOrderId: order.id,
+                                orderNumber: order.orderNumber,
+                                status: order.status,
+                                isPaid: order.orderPaymentStatus === 'PAID',
+                                paidAt: order.orderedAt,
+                                totalAmount: order.totalFinalPrice,
+                                createdAt: order.createdAt,
+                                updatedAt: new Date(),
+                                userId: user?._id, // Optional: might be null if user not found
+                                customer: order.customer ? {
+                                    ikasCustomerId: order.customer.id,
+                                    email: order.customer.email,
+                                    firstName: order.customer.firstName,
+                                    lastName: order.customer.lastName,
+                                    fullName: order.customer.fullName,
+                                    phone: order.customer.phone,
+                                    isGuestCheckout: order.customer.isGuestCheckout
+                                } : null,
+                                items: order.orderLineItems?.map(item => ({
+                                    productId: item?.variant?.productId,
+                                    variantId: item?.variant?.id,
+                                    quantity: item?.quantity,
+                                    price: item?.finalPrice,
+                                    mainImageId: item?.variant?.mainImageId,
+                                    name: item?.variant?.name,
+                                    brand: item?.variant?.brand ? {
+                                        id: item?.variant?.brand?.id,
+                                        name: item?.variant?.brand?.name
+                                    } : null,
+                                    selectedVariants: item?.variant?.variantValues?.map(variant => ({
+                                        valueId: variant?.variantValueId,
+                                        valueName: variant?.variantValueName
+                                    })) || []
+                                })) || [],
+                                shippingAddress: order.shippingAddress ? {
+                                    firstName: order.shippingAddress?.firstName,
+                                    lastName: order.shippingAddress?.lastName,
+                                    phone: order.shippingAddress?.phone,
+                                    addressLine1: order.shippingAddress?.addressLine1,
+                                    apartment: order.shippingAddress?.addressLine2,
+                                    postalCode: order.shippingAddress?.postalCode,
+                                    country: order.shippingAddress?.country ? {
+                                        id: order.shippingAddress?.country?.id,
+                                        name: order.shippingAddress?.country?.name
+                                    } : null,
+                                    city: order.shippingAddress?.city ? {
+                                        id: order.shippingAddress?.city?.id,
+                                        name: order.shippingAddress?.city?.name
+                                    } : null,
+                                    district: order.shippingAddress?.district ? {
+                                        id: order.shippingAddress?.district?.id,
+                                        name: order.shippingAddress?.district?.name
+                                    } : null
+                                } : null,
+                                shippingMethod: {
+                                    type: order.shippingLines?.[0]?.title?.toLowerCase() || 'free',
+                                    name: order.shippingLines?.[0]?.title || 'Standart Kargo',
+                                    price: order.shippingLines?.[0]?.finalPrice || 0
+                                }
+                            },
+                            { upsert: true, new: true }
+                        );
+                    } catch (error) {
+                        console.error('Error processing order:', error);
+                    }
+                }
+
+
+                console.log(`Processed ${orders.length} orders from page ${page}`);
+                page++
+
+                // Rate limiting - her sayfa arasında 1 saniye bekle
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            console.log('Order sync completed successfully');
+        } catch (error) {
+            console.error('Error syncing orders:', error);
         }
     }
 }

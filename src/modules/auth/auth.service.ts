@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { Model } from 'mongoose';
@@ -9,8 +9,8 @@ import { generateUsername } from 'src/utils/generate-username';
 import { LoginDto } from 'src/dtos/auth/login.dto';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { IkasService } from '../../services/ikas.service';
-import { IkasUser, IkasUserDocument } from 'src/schemas/ikas-user.schema';
+import { IkasUser, IkasUserDocument } from '../ikas-users/schemas/ikas-user.schema';
+import { IkasService } from 'src/services/ikas.service';
 
 @Injectable()
 export class AuthService {
@@ -23,134 +23,281 @@ export class AuthService {
         private ikasService: IkasService,
     ) { }
 
-    private async sendIkasWebhook() {
-        try {
-            const accessToken = await this.ikasService.getAccessToken();
+    // private async sendIkasWebhook() {
+    //     try {
+    //         const accessToken = await this.ikasService.getAccessToken();
 
-            const mutation = `
-                mutation DeleteWebhook($input: WebhookInput!) {
-                    deleteWebhook(input: $input) {
-                        id
-                        scope
-                        endpoint
-                        createdAt
-                        updatedAt
-                        deleted
-                    }
-                }
-            `;
+    //         const mutation = `
+    //             mutation DeleteWebhook($input: WebhookInput!) {
+    //                 deleteWebhook(input: $input) {
+    //                     id
+    //                     scope
+    //                     endpoint
+    //                     createdAt
+    //                     updatedAt
+    //                     deleted
+    //                 }
+    //             }
+    //         `;
 
-            const variables = {
-                input: {
-                    scopes: ["store/customer/updated", "store/order/created"],
-                }
-            };
+    //         const variables = {
+    //             input: {
+    //                 scopes: ["store/customer/updated", "store/order/created"],
+    //             }
+    //         };
 
-            const response = await axios.post(
-                'https://api.myikas.com/api/v1/admin/graphql',
-                {
-                    query: mutation,
-                    variables
-                },
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`,
-                    }
-                }
-            );
+    //         const response = await axios.post(
+    //             'https://api.myikas.com/api/v1/admin/graphql',
+    //             {
+    //                 query: mutation,
+    //                 variables
+    //             },
+    //             {
+    //                 headers: {
+    //                     'Content-Type': 'application/json',
+    //                     'Authorization': `Bearer ${accessToken}`,
+    //                 }
+    //             }
+    //         );
 
-            console.log('İkas webhook kaydı başarılı:', response.data);
-        } catch (error) {
-            console.error('İkas webhook hatası:', error);
-        }
-    }
+    //         console.log('İkas webhook kaydı başarılı:', response.data);
+    //     } catch (error) {
+    //         console.error('İkas webhook hatası:', error);
+    //     }
+    // }
 
     async register(registerDto: RegisterDto) {
         const { email, password, firstName, lastName } = registerDto;
 
-        const user = await this.userModel.findOne({ email });
-        if (user) {
+        const existingUser = await this.userModel.findOne({ email });
+        if (existingUser) {
             throw new BadRequestException('User already exists');
         }
 
-        const hashedPassword = await bcrypt.hash(password, 12);
+        try {
+            // Try to register with IKAS first
+            const ikasResponse = await this.ikasService.createIkasUser({
+                email,
+                password,
+                firstName,
+                lastName,
+                isAcceptMarketing: true,
+                captchaToken: null,
+                phone: ''
+            });
 
-        const newUser = new this.userModel({ email, password: hashedPassword, firstName, lastName, username: generateUsername(firstName, lastName, email) });
+            console.log('deneme user', ikasResponse)
 
-        await newUser.save();
 
-        // await this.sendIkasWebhook();
 
-        const payload = {
-            id: newUser._id,
-            email: newUser.email,
+            if (ikasResponse?.customer) {
+                const ikasCustomer = ikasResponse.customer;
+                const ikasToken = {
+                    token: ikasResponse.token,
+                    tokenExpiry: ikasResponse.tokenExpiry
+                };
+
+                // Create IKAS user in our database
+                const ikasUser = await this.ikasUserModel.create({
+                    ikasId: ikasCustomer.id,
+                    email: ikasCustomer.email,
+                    firstName: ikasCustomer.firstName,
+                    lastName: ikasCustomer.lastName,
+                    fullName: ikasCustomer.fullName || `${ikasCustomer.firstName} ${ikasCustomer.lastName}`,
+                    phone: ikasCustomer.phone,
+                    gender: ikasCustomer.gender,
+                    birthDate: ikasCustomer.birthDate,
+                    isEmailVerified: ikasCustomer.isEmailVerified,
+                    isPhoneVerified: ikasCustomer.isPhoneVerified,
+                    accountStatus: ikasCustomer.accountStatus,
+                    preferredLanguage: ikasCustomer.preferredLanguage,
+                    addresses: ikasCustomer.addresses,
+                    ikasToken
+                });
+
+                // Generate a username from email (before the @ symbol)
+                const username = email.split('@')[0];
+
+                // Check if username exists
+                const usernameExists = await this.userModel.findOne({ username });
+
+                // If username exists, append a random number
+                const finalUsername = usernameExists
+                    ? `${username}${Math.floor(Math.random() * 1000)}`
+                    : username;
+
+                // Create main user
+                const hashedPassword = await bcrypt.hash(password, 10);
+                const user = await this.userModel.create({
+                    email,
+                    username: finalUsername,
+                    password: hashedPassword,
+                    firstName: ikasCustomer.firstName,
+                    lastName: ikasCustomer.lastName,
+                    ikasUserId: ikasUser._id,
+                });
+
+                const payload = {
+                    email: user.email,
+                    id: user._id,
+                };
+
+                return {
+                    token: this.jwtService.sign(payload),
+                    user: user
+                };
+            }
+        } catch (error) {
+            console.error('IKAS registration error:', error);
+            // Continue with local registration if IKAS fails
         }
 
-        const token = this.jwtService.sign(payload);
-
-        //create ikas user
-        const ikasUser = await this.ikasService.createIkasUser({
-            email: newUser.email,
-            firstName: newUser.firstName,
-            lastName: newUser.lastName,
-            password,
-            isAcceptMarketing: false,
-            captchaToken: null,
-            phone: null,
+        // If IKAS registration fails, create local user only
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await this.userModel.create({
+            email,
+            password: hashedPassword,
+            firstName,
+            lastName
         });
 
-        console.log(ikasUser)
-
-
-        if (ikasUser) {
-            await this.ikasUserModel.create({
-                firstName: ikasUser.customer.firstName,
-                lastName: ikasUser.customer.lastName,
-                email: ikasUser.customer.email,
-                ikasId: ikasUser.customer.id,
-            })
-        }
-
-
+        const payload = { email: user.email, sub: user._id };
         return {
-            user: newUser,
-            token: token,
+            token: this.jwtService.sign(payload),
+            user: user
         };
     }
 
     async login(loginDto: LoginDto) {
         const { email, password } = loginDto;
 
-        const user = await this.userModel.findOne({ email });
-        if (!user) {
-            throw new BadRequestException('User not found');
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        if (!isPasswordValid) {
-            throw new BadRequestException('Invalid password');
+        const validatedUser = await this.validateUser(email, password);
+        console.log('validatedUser', validatedUser);
+        if (!validatedUser) {
+            throw new UnauthorizedException('Invalid credentials');
         }
 
         const payload = {
-            id: user._id,
-            email: user.email,
-        }
+            email: validatedUser.email,
+            id: validatedUser._id,
+        };
 
         const userData = {
-            ...user.toObject(),
-            password: undefined,
+            ...validatedUser,
         }
 
-        console.log(userData)
+        console.log('userData', validatedUser)
 
-        const token = this.jwtService.sign(payload);
 
         return {
-            user: userData,
-            token: token,
+            token: this.jwtService.sign(payload),
+            user: validatedUser
         };
+    }
+
+    async validateUser(email: string, pass: string): Promise<any> {
+        try {
+            // First try IKAS login
+            const ikasResponse = await this.ikasService.customerLogin(email, pass);
+
+            console.log('ikasResponse', ikasResponse);
+
+            if (ikasResponse?.data?.customerLogin?.customer) {
+                const ikasCustomer = ikasResponse.data.customerLogin.customer;
+                const ikasToken = {
+                    token: ikasResponse.data.customerLogin.token,
+                    tokenExpiry: ikasResponse.data.customerLogin.tokenExpiry
+                };
+
+                // Check if IKAS user exists in our database
+                let ikasUser = await this.ikasUserModel.findOne({ ikasId: ikasCustomer.id });
+
+                if (ikasUser) {
+                    // Update existing IKAS user
+                    ikasUser = await this.ikasUserModel.findOneAndUpdate(
+                        { ikasId: ikasCustomer.id },
+                        {
+                            email: ikasCustomer.email,
+                            firstName: ikasCustomer.firstName,
+                            lastName: ikasCustomer.lastName,
+                            fullName: ikasCustomer.fullName,
+                            phone: ikasCustomer.phone,
+                            gender: ikasCustomer.gender,
+                            birthDate: ikasCustomer.birthDate,
+                            isEmailVerified: ikasCustomer.isEmailVerified,
+                            isPhoneVerified: ikasCustomer.isPhoneVerified,
+                            accountStatus: ikasCustomer.accountStatus,
+                            preferredLanguage: ikasCustomer.preferredLanguage,
+                            addresses: ikasCustomer.addresses,
+                            ikasToken
+                        },
+                        { new: true }
+                    );
+                } else {
+                    // Create new IKAS user
+                    ikasUser = await this.ikasUserModel.create({
+                        ikasId: ikasCustomer.id,
+                        email: ikasCustomer.email,
+                        firstName: ikasCustomer.firstName,
+                        lastName: ikasCustomer.lastName,
+                        fullName: ikasCustomer.fullName,
+                        phone: ikasCustomer.phone,
+                        gender: ikasCustomer.gender,
+                        birthDate: ikasCustomer.birthDate,
+                        isEmailVerified: ikasCustomer.isEmailVerified,
+                        isPhoneVerified: ikasCustomer.isPhoneVerified,
+                        accountStatus: ikasCustomer.accountStatus,
+                        preferredLanguage: ikasCustomer.preferredLanguage,
+                        addresses: ikasCustomer.addresses,
+                        ikasToken
+                    });
+                }
+
+                // Check if user exists in our main users collection
+                let user = await this.userModel.findOne({ email });
+
+                if (!user) {
+                    // Generate a username from email (before the @ symbol)
+                    const username = email.split('@')[0];
+
+                    // Check if username exists
+                    const usernameExists = await this.userModel.findOne({ username });
+
+                    // If username exists, append a random number
+                    const finalUsername = usernameExists
+                        ? `${username}${Math.floor(Math.random() * 1000)}`
+                        : username;
+
+                    // Create user in our database
+                    user = await this.userModel.create({
+                        email,
+                        username: finalUsername,
+                        password: await bcrypt.hash(pass, 10),
+                        firstName: ikasCustomer.firstName,
+                        lastName: ikasCustomer.lastName,
+                        ikasUserId: ikasUser.id
+                    });
+                }
+
+
+
+                return {
+                    user: user,
+                    ikasToken: ikasToken.token // Just return the token string for JWT
+                };
+            }
+        } catch (error) {
+            console.error('IKAS validation error:', error);
+        }
+
+        // If IKAS login fails or error occurs, try local login
+        const user = await this.userModel.findOne({ email });
+        if (user && await bcrypt.compare(pass, user.password)) {
+            const { password, ...result } = user.toObject();
+            return result;
+        }
+
+        return null;
     }
 
     async getIkasWebhooks() {

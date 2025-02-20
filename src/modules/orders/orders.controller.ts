@@ -40,4 +40,9 @@ export class OrdersController {
       refundData.stockLocationId
     );
   }
+
+  @Post('sync')
+  async syncOrders() {
+    return this.ordersService.syncOrders();
+  }
 }

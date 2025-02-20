@@ -45,7 +45,7 @@ export class Address {
     @Prop({ required: true })
     addressLine1: string; // Adres
 
-    @Prop({ required: true })
+    @Prop({ required: false })
     apartment: string; // Apartman
 
     @Prop()

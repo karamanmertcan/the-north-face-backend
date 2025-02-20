@@ -1,34 +1,32 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { User, UserSchema } from '../../schemas/user.schema';
+import { AuthController } from './auth.controller';
+import { MongooseModule } from '@nestjs/mongoose';
+import { User, UserSchema } from 'src/schemas/user.schema';
+import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
-import { IkasService } from '../../services/ikas.service';
-import { IkasUser, IkasUserSchema } from 'src/schemas/ikas-user.schema';
+import { IkasUsersModule } from '../ikas-users/ikas-users.module';
+import { IkasModule } from '../ikas/ikas.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { IkasUser, IkasUserSchema } from '../ikas-users/schemas/ikas-user.schema';
+import { IkasService } from 'src/services/ikas.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }, { name: IkasUser.name, schema: IkasUserSchema }]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: {
-          expiresIn: '7d',
-        },
+        signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],
     }),
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-    MongooseModule.forFeature([{ name: IkasUser.name, schema: IkasUserSchema }]),
+    IkasUsersModule,
+    IkasModule
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, IkasService],
-  exports: [JwtStrategy, PassportModule, IkasService],
+  exports: [AuthService],
 })
 export class AuthModule { }

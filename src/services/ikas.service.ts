@@ -5,6 +5,7 @@ import axios from 'axios';
 @Injectable()
 export class IkasService {
     private readonly ikasApiUrl = 'https://api.myikas.com/api/v1/admin/graphql';
+    private readonly ikasXapiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtIjoiZjkyOTFmNDctZDY1Ny00NTY5LTlhNGUtZTJmNjRhYmVkMjA3Iiwic2YiOiI1YmRmYmYzYi1lOWVmLTQ3ZjMtYmYzYi03MjlhNjcwYjMyZTgiLCJzZnQiOjEsInNsIjoiZWE3NTUyOWItNDU3MC00MTk5LWFlZjEtMzE5YTNiN2FhNGU3In0.NfVRBrkyqXQuDmrGdlFTf9X3oYBECDaBEpkV72d7eXc"
     private ikasAccessToken: string | null = null;
     private tokenExpiryTime: number | null = null;
 
@@ -157,6 +158,303 @@ export class IkasService {
             throw error;
         }
     }
+
+    async customerLogin(email: string, password: string) {
+        const query = `
+            mutation customerLogin (
+                $captchaToken: String,
+                $email: String!,
+                $password: String!,
+            ) {
+                customerLogin (
+                    captchaToken: $captchaToken,
+                    email: $email,
+                    password: $password,
+                ) {
+                    customer {
+                        accountStatus
+                        accountStatusUpdatedAt
+                        addresses {
+                            addressLine1
+                            addressLine2
+                            attributes {
+                                customerAttributeId
+                                customerAttributeOptionId
+                                value
+                            }
+                            city {
+                                code
+                                id
+                                name
+                            }
+                            company
+                            country {
+                                code
+                                id
+                                iso2
+                                iso3
+                                name
+                            }
+                            createdAt
+                            deleted
+                            district {
+                                code
+                                id
+                                name
+                            }
+                            firstName
+                            id
+                            identityNumber
+                            isDefault
+                            lastName
+                            phone
+                            postalCode
+                            region {
+                                id
+                                name
+                            }
+                            state {
+                                code
+                                id
+                                name
+                            }
+                            taxNumber
+                            taxOffice
+                            title
+                            updatedAt
+                        }
+                        attributes {
+                            customerAttributeId
+                            customerAttributeOptionId
+                            value
+                        }
+                        birthDate
+                        createdAt
+                        customerGroupIds
+                        customerSegmentIds
+                        customerSequence
+                        deleted
+                        email
+                        emailVerifiedDate
+                        firstName
+                        fullName
+                        gender
+                        id
+                        isEmailVerified
+                        isPhoneVerified
+                        lastName
+                        note
+                        orderCount
+                        passwordUpdateDate
+                        phone
+                        phoneSubscriptionStatus
+                        phoneSubscriptionStatusUpdatedAt
+                        phoneVerifiedDate
+                        preferredLanguage
+                        priceListId
+                        priceListRules {
+                            discountRate
+                            filters {
+                                type
+                                valueList
+                            }
+                            priceListId
+                            shouldMatchAllFilters
+                            value
+                            valueType
+                        }
+                        registrationSource
+                        smsSubscriptionStatus
+                        smsSubscriptionStatusUpdatedAt
+                        subscriptionStatus
+                        subscriptionStatusUpdatedAt
+                        tagIds
+                        updatedAt
+                    }
+                    token
+                    tokenExpiry
+                }
+            }
+        `;
+
+        try {
+            const response = await axios.post('https://api.myikas.com/api/sf/graphql?op=customerLogin', {
+                query,
+                variables: {
+                    email,
+                    password,
+                    captchaToken: null
+                }
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'x-api-key': this.ikasXapiKey
+                }
+            });
+
+            console.log('IKAS response:', response.data);
+
+            return response.data;
+        } catch (error) {
+            console.error('IKAS login error:', error.response?.data || error);
+            throw error;
+        }
+    }
+
+    async registerCustomer(customerData: {
+        email: string;
+        password: string;
+        firstName: string;
+        lastName: string;
+    }) {
+        const query = `
+            mutation customerRegister(
+                $captchaToken: String
+                $email: String!
+                $firstName: String!
+                $isAcceptMarketing: Boolean!
+                $lastName: String!
+                $password: String!
+                $phone: String
+            ) {
+                customerRegister(
+                    captchaToken: $captchaToken
+                    email: $email
+                    firstName: $firstName
+                    isAcceptMarketing: $isAcceptMarketing
+                    lastName: $lastName
+                    password: $password
+                    phone: $phone
+                ) {
+                    customer {
+                        accountStatus
+                        accountStatusUpdatedAt
+                        addresses {
+                            addressLine1
+                            addressLine2
+                            attributes {
+                                customerAttributeId
+                                customerAttributeOptionId
+                                value
+                            }
+                            city {
+                                code
+                                id
+                                name
+                            }
+                            company
+                            country {
+                                code
+                                id
+                                iso2
+                                iso3
+                                name
+                            }
+                            createdAt
+                            deleted
+                            district {
+                                code
+                                id
+                                name
+                            }
+                            firstName
+                            id
+                            identityNumber
+                            isDefault
+                            lastName
+                            phone
+                            postalCode
+                            region {
+                                id
+                                name
+                            }
+                            state {
+                                code
+                                id
+                                name
+                            }
+                            taxNumber
+                            taxOffice
+                            title
+                            updatedAt
+                        }
+                        attributes {
+                            customerAttributeId
+                            customerAttributeOptionId
+                            value
+                        }
+                        birthDate
+                        createdAt
+                        customerGroupIds
+                        customerSegmentIds
+                        customerSequence
+                        deleted
+                        email
+                        emailVerifiedDate
+                        firstName
+                        fullName
+                        gender
+                        id
+                        isEmailVerified
+                        isPhoneVerified
+                        lastName
+                        note
+                        orderCount
+                        passwordUpdateDate
+                        phone
+                        phoneSubscriptionStatus
+                        phoneSubscriptionStatusUpdatedAt
+                        phoneVerifiedDate
+                        preferredLanguage
+                        priceListId
+                        priceListRules {
+                            discountRate
+                            filters {
+                                type
+                                valueList
+                            }
+                            priceListId
+                            shouldMatchAllFilters
+                            value
+                            valueType
+                        }
+                        registrationSource
+                        smsSubscriptionStatus
+                        smsSubscriptionStatusUpdatedAt
+                        subscriptionStatus
+                        subscriptionStatusUpdatedAt
+                        tagIds
+                        updatedAt
+                    }
+                    token
+                    tokenExpiry
+                }
+            }
+        `;
+
+        try {
+            const response = await axios.post('https://api.myikas.com/api/sf/graphql?op=customerRegister', {
+                query,
+                variables: {
+                    ...customerData,
+                    captchaToken: null,
+                    isAcceptMarketing: false,
+                    phone: null
+                }
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('IKAS registration error:', error.response?.data || error);
+            throw error;
+        }
+    }
 }
 
 export const createIkasUser = async (userData: {
@@ -215,7 +513,7 @@ export const createIkasUser = async (userData: {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 query: mutation,

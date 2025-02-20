@@ -3,7 +3,7 @@ import axios from 'axios';
 import { IkasService } from '../../services/ikas.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Favorite, FavoriteDocument } from 'src/schemas/favorite.schema';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -34,6 +34,7 @@ export class ProductsService {
                                 id
                                 name
                                 vendorId
+                                description
                                 categories {
                                     id
                                     name
@@ -80,31 +81,6 @@ export class ProductsService {
                     }`
                 );
 
-                console.log(response.data.data.listProduct.data.map((product: any) => ({
-                    ikasProductId: product.id,
-                    name: product.name,
-                    vendorId: product.vendorId,
-                    categories: product.categories,
-                    productVariantTypes: product.productVariantTypes,
-                    brand: product.brand,
-                    brandId: product.brandId,
-                    tags: product.tags,
-                    variants: product.variants.map((variant: any) => ({
-                        id: variant.id,
-                        sku: variant.sku,
-                        isActive: variant.isActive,
-                        price: variant.prices.find((p: any) => p.currency === 'TRY')?.sellPrice || 0,
-                        compareAtPrice: variant.prices.find((p: any) => p.currency === 'TRY')?.discountPrice,
-                        weight: variant.weight,
-                        stockAmount: variant.stockAmount || 0,
-                        images: variant.images.map((img: any) => ({
-                            imageId: img.imageId,
-                            isMain: img.isMain
-                        })),
-                        values: variant.values || []
-                    }))
-                })))
-
                 const products = response.data.data.listProduct.data.map((product: any) => ({
                     ikasProductId: product.id,
                     name: product.name,
@@ -114,6 +90,7 @@ export class ProductsService {
                     brand: product.brand,
                     brandId: product.brandId,
                     tags: product.tags,
+                    description: product.description,
                     variants: product.variants.map((variant: any) => ({
                         id: variant.id,
                         sku: variant.sku,
@@ -187,11 +164,22 @@ export class ProductsService {
     }
 
     async getProductById(id: string) {
+        console.log('id', id)
         try {
             const accessToken = await this.ikasService.getAccessToken();
-            const dbProduct: any = await this.productModel.findById({
-                _id: id
-            });
+            // Önce MongoDB'de ara
+            let dbProduct: any;
+
+            if (isValidObjectId(id)) {
+                // Eğer ObjectId ise direkt _id ile ara
+                console.log('ObjectId')
+                dbProduct = await this.productModel.findOne({ _id: id });
+            } else {
+                // ObjectId değilse ikasProductId ile ara
+                console.log('ikasProductId')
+                dbProduct = await this.productModel.findOne({ ikasProductId: id });
+            }
+
             if (!dbProduct) {
                 throw new Error('Product not found');
             }
@@ -321,6 +309,8 @@ export class ProductsService {
                     }
                 }
             );
+
+
 
             return response.data;
         } catch (error) {
@@ -499,6 +489,115 @@ export class ProductsService {
         } catch (error) {
             console.error('Error getting community products:', error);
             throw new Error('Failed to get community products');
+        }
+    }
+
+    async getProductByCategorieId(categoryId: string, userId?: string) {
+        try {
+            const query = `
+                query ListProduct($categoryIds: CategoryFilterInput) {
+                    listProduct(categoryIds: $categoryIds) {
+                        data {
+                            id
+                            name
+                            vendorId
+                            description
+                            categories {
+                                id
+                                name
+                                parentId
+                            }
+                            productVariantTypes {
+                                variantTypeId
+                                variantValueIds
+                            }
+                            brand {
+                                id
+                                name
+                            }
+                            brandId
+                            tags {
+                                id
+                                name
+                            }
+                            variants {
+                                id
+                                sku
+                                isActive
+                                weight
+                                images {
+                                    fileName
+                                    isMain
+                                    order
+                                    isVideo
+                                    imageId
+                                }
+                                prices {
+                                    sellPrice
+                                    discountPrice
+                                    currency
+                                }
+                            }
+                            createdAt
+                        }
+                        count
+                        hasNext
+                        limit
+                        page
+                    }
+                }
+            `;
+
+            const variables = {
+                categoryIds: {
+                    eq: categoryId
+                }
+            };
+
+            const response = await this.ikasService.makeRequest(query, variables);
+
+            if (!response?.data?.data?.listProduct?.data) {
+                return [];
+            }
+
+            const products = response?.data?.data?.listProduct?.data.map((product: any) => {
+                const mainVariant = product.variants?.find(v => v.isActive) || product.variants?.[0];
+                console.log('main variant ===>', mainVariant)
+                const price = mainVariant?.prices[0]?.sellPrice;
+                const discountPrice = mainVariant?.prices[0]?.discountPrice;
+                const mainImage = mainVariant?.images?.find(img => img.isMain) || mainVariant?.images?.[0];
+
+                return {
+                    _id: product.id,
+                    name: product.name,
+                    brandName: product.brand?.name || '',
+                    image: mainImage?.imageId,
+                    price: price || 0,
+                    discount: discountPrice || null,
+                    variants: product.variants || []
+                };
+            });
+
+            if (userId) {
+                const favorites = await this.favoriteModel.find({ userId }).lean();
+                const favoriteProductIds = favorites.map((favorite) => favorite.productId);
+
+                return products.map((product) => ({
+                    ...product,
+                    type: 'ikas_product',
+                    isFavorite: favoriteProductIds.includes(product._id),
+                }));
+            }
+
+            return products.map((product) => ({
+                ...product,
+                type: 'ikas_product',
+                isFavorite: false,
+            }));
+
+        } catch (error) {
+            console.error('Error getting products by category:', error);
+            throw new Error('Failed to get products by category');
         }
     }
 }

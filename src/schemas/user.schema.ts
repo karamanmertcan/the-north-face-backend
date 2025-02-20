@@ -39,6 +39,9 @@ export class User extends Document {
 
     @Prop({ type: [AddressSchema], default: [] })
     addresses: Address[];
+
+    @Prop({ type: String, default: '' })
+    ikasCustomerId: string;
 }
 
 

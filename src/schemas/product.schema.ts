@@ -14,6 +14,12 @@ export class Product {
   @Prop()
   vendorId: string;
 
+  @Prop({
+    type: String,
+    default: '',
+  })
+  description: string;
+
   @Prop({ type: [{ type: Object }] })
   categories: Array<{
     id: string;

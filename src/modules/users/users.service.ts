@@ -92,14 +92,9 @@ export class UsersService {
 
 
     async updateUser(userId: string, updateUserDto: UpdateUserDto) {
-        if (updateUserDto.username) {
-            const user = await this.userModel.findOne({ username: updateUserDto.username }).lean();
-            if (user) {
-                throw new BadRequestException('Kullanıcı adı zaten kullanılıyor.');
-            }
-        }
+        console.log('userid', userId, updateUserDto)
 
-        const user = await this.userModel.findByIdAndUpdate(userId, updateUserDto, { new: true }).lean();
+        const user = await this.userModel.findByIdAndUpdate(userId, updateUserDto, { new: true });
 
 
         return user;

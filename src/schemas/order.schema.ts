@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Order {
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'User', required: false })
     userId: Types.ObjectId;
 
     @Prop({
@@ -35,7 +35,11 @@ export class Order {
             quantity: Number,
             price: Number,
             name: String,
-            image: String,
+            mainImageId: String,
+            brand: {
+                id: String,
+                name: String
+            },
             selectedVariants: [{ valueId: String, valueName: String }]
         }],
         required: true
@@ -46,7 +50,15 @@ export class Order {
         quantity: number;
         price: number;
         name: string;
-        image: string;
+        mainImageId: string;
+        brand: {
+            id: string;
+            name: string;
+        };
+        selectedVariants: Array<{
+            valueId: string;
+            valueName: string;
+        }>;
     }>;
 
     @Prop({
@@ -93,6 +105,28 @@ export class Order {
             id: string;
             name: string;
         };
+    };
+
+    @Prop({
+        type: {
+            ikasCustomerId: String,
+            email: String,
+            firstName: String,
+            lastName: String,
+            fullName: String,
+            phone: String,
+            isGuestCheckout: Boolean
+        },
+        required: false
+    })
+    customer: {
+        ikasCustomerId: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        fullName: string;
+        phone: string;
+        isGuestCheckout: boolean;
     };
 
     @Prop({ default: 'pending' })
