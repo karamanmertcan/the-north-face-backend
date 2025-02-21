@@ -18,7 +18,7 @@ import { IkasService } from 'src/services/ikas.service';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: '7d' },
+        signOptions: { expiresIn: '30d' },
       }),
       inject: [ConfigService],
     }),

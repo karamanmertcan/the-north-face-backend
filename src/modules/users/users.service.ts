@@ -43,7 +43,9 @@ export class UsersService {
 
         const videos = await this.videoModel.find({
             creator: userId
-        }).lean();
+        })
+            .populate('creator', 'firstName lastName username avatar')
+            .lean();
 
         const followers = await this.followersFollowingsModel.find({
             following: userId
@@ -162,6 +164,7 @@ export class UsersService {
     }
 
     async getUserProfileById(userId: string, currentUserId: string) {
+        console.log('userId', userId, 'currentUserId', currentUserId)
         try {
             const user = await this.userModel.findById(userId);
             if (!user) {

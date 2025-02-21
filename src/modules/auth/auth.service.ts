@@ -23,49 +23,6 @@ export class AuthService {
         private ikasService: IkasService,
     ) { }
 
-    // private async sendIkasWebhook() {
-    //     try {
-    //         const accessToken = await this.ikasService.getAccessToken();
-
-    //         const mutation = `
-    //             mutation DeleteWebhook($input: WebhookInput!) {
-    //                 deleteWebhook(input: $input) {
-    //                     id
-    //                     scope
-    //                     endpoint
-    //                     createdAt
-    //                     updatedAt
-    //                     deleted
-    //                 }
-    //             }
-    //         `;
-
-    //         const variables = {
-    //             input: {
-    //                 scopes: ["store/customer/updated", "store/order/created"],
-    //             }
-    //         };
-
-    //         const response = await axios.post(
-    //             'https://api.myikas.com/api/v1/admin/graphql',
-    //             {
-    //                 query: mutation,
-    //                 variables
-    //             },
-    //             {
-    //                 headers: {
-    //                     'Content-Type': 'application/json',
-    //                     'Authorization': `Bearer ${accessToken}`,
-    //                 }
-    //             }
-    //         );
-
-    //         console.log('İkas webhook kaydı başarılı:', response.data);
-    //     } catch (error) {
-    //         console.error('İkas webhook hatası:', error);
-    //     }
-    // }
-
     async register(registerDto: RegisterDto) {
         const { email, password, firstName, lastName } = registerDto;
 
@@ -138,10 +95,7 @@ export class AuthService {
                 });
 
 
-                const payload = {
-                    email: user.email,
-                    id: user._id,
-                };
+                const payload = { email: user.email, id: user._id };
 
                 return {
                     token: this.jwtService.sign(payload),
@@ -165,6 +119,7 @@ export class AuthService {
         console.log('user data 2', user)
 
         const payload = { email: user.email, id: user._id };
+
         return {
             token: this.jwtService.sign(payload),
             user: user
@@ -184,10 +139,6 @@ export class AuthService {
             email: validatedUser?.email,
             id: validatedUser?._id,
         };
-
-
-        console.log('userData', validatedUser)
-
 
         return {
             token: this.jwtService.sign(payload),
@@ -461,5 +412,4 @@ export class AuthService {
             throw error;
         }
     }
-
 }

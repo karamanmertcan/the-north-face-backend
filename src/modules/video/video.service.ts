@@ -13,6 +13,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { LikeVideo, LikeVideoDocument } from 'src/schemas/like-video.schema';
+import { User, UserDocument } from 'src/schemas/user.schema';
+import { FollowersFollowings, FollowersFollowingsDocument } from 'src/schemas/followers-followings.schema';
 
 @Injectable()
 export class VideoService {
@@ -24,6 +26,8 @@ export class VideoService {
         private configService: ConfigService,
         @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
         @InjectModel(LikeVideo.name) private likeVideoModel: Model<LikeVideoDocument>,
+        @InjectModel(User.name) private userModel: Model<UserDocument>,
+        @InjectModel(FollowersFollowings.name) private followersFollowingsModel: Model<FollowersFollowingsDocument>,
     ) {
         this.s3Client = getS3Config(configService);
         // Uploads klasörünü oluştur
@@ -61,13 +65,23 @@ export class VideoService {
         });
     }
 
-    async uploadVideo(file: Express.Multer.File, userId: string) {
+    async uploadVideo(file: Express.Multer.File, caption: string, userId: string) {
+        let tempVideoPath = null;
         try {
+            console.log('Starting video upload process');
+
             // Önce buffer'ı geçici dosyaya kaydet
-            const tempVideoPath = await this.saveBufferToTemp(file.buffer, file.originalname);
+            tempVideoPath = await this.saveBufferToTemp(file.buffer, file.originalname);
+            console.log('Temporary file saved:', tempVideoPath);
 
             const fileName = `${Date.now()}-${file.originalname}`;
             const bucketName = this.configService.get('AWS_BUCKET_NAME');
+
+            console.log('Uploading to S3:', {
+                bucket: bucketName,
+                fileName: fileName,
+                fileSize: file.buffer.length
+            });
 
             // S3'e video yükle
             await this.s3Client.send(
@@ -76,35 +90,55 @@ export class VideoService {
                     Key: `videos/${fileName}`,
                     Body: file.buffer,
                     ContentType: file.mimetype,
+                    ACL: 'public-read'
                 })
             );
 
-            // Thumbnail oluştur
-            const thumbnailPath = await this.generateThumbnail(tempVideoPath);
+            console.log('Video uploaded to S3');
 
-            // Geçici video dosyasını sil
-            fs.unlinkSync(tempVideoPath);
+            // Thumbnail oluştur
+            console.log('Generating thumbnail');
+            const thumbnailPath = await this.generateThumbnail(tempVideoPath);
+            console.log('Thumbnail generated:', thumbnailPath);
 
             // Video kaydını oluştur
             const video = new this.videoModel({
                 title: file.originalname,
-                description: 'adasdasd',
+                description: caption,
                 videoUrl: `https://${bucketName}.s3.amazonaws.com/videos/${fileName}`,
                 thumbnailUrl: `/thumbnails/${path.basename(thumbnailPath)}`,
                 creator: userId,
-                status: 'processing',
+                status: 'active',
+                createdAt: new Date(),
+                likes: 0,
+                dislikes: 0,
+                views: 0
             });
 
-            await video.save();
-            return video;
+            const savedVideo = await video.save();
+            console.log('Video record saved to database:', savedVideo._id);
 
+            // Geçici dosyaları temizle
+            if (tempVideoPath && fs.existsSync(tempVideoPath)) {
+                fs.unlinkSync(tempVideoPath);
+                console.log('Temporary files cleaned up');
+            }
+
+            return savedVideo;
         } catch (error) {
-            console.error('Video upload error:', error);
-            throw error;
+            console.error('Error in uploadVideo:', error);
+
+            // Geçici dosyaları temizle
+            if (tempVideoPath && fs.existsSync(tempVideoPath)) {
+                fs.unlinkSync(tempVideoPath);
+                console.log('Cleaned up temporary files after error');
+            }
+
+            throw new Error(`Failed to upload video: ${error.message}`);
         }
     }
 
-    async getVideos(page: number, limit: number = 5) {
+    async getVideos(page: number, limit: number = 5, userId?: string) {
         try {
             const videos = await this.videoModel
                 .find({})
@@ -114,22 +148,31 @@ export class VideoService {
                 .limit(limit)
                 .lean();
 
-            // Her video için yorum sayısını hesapla
-            const videosWithCommentsCount = await Promise.all(
+
+            // Her video için yorum sayısını ve following durumunu hesapla
+            const videosWithDetails = await Promise.all(
                 videos.map(async (video) => {
-                    const commentsCount = await this.commentModel.countDocuments({
-                        video: video._id
-                    });
+                    console.log(userId, video.creator._id)
+
+                    const [commentsCount, isFollowing] = await Promise.all([
+                        this.commentModel.countDocuments({
+                            video: video._id
+                        }),
+                        userId ? this.followersFollowingsModel.exists({
+                            follower: userId,
+                            following: video.creator._id
+                        }) : Promise.resolve(false)
+                    ]);
 
                     return {
                         ...video,
-                        commentsCount
+                        commentsCount,
+                        isFollowing: !!isFollowing
                     };
                 })
             );
 
-            console.log(`Page: ${page}, Videos: ${videos.length}`);
-            return videosWithCommentsCount;
+            return videosWithDetails;
 
         } catch (error) {
             console.error('Error fetching videos:', error);
@@ -221,4 +264,46 @@ export class VideoService {
             { new: true }
         );
     }
-} 
+
+    async getLatestVideos(page: number = 1, limit: number = 10) {
+        try {
+            const skip = (page - 1) * limit;
+
+            const videos = await this.videoModel
+                .find({ isPublished: true })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate({
+                    path: 'creator',
+                    select: 'firstName lastName username avatar'
+                })
+                .populate('likes')
+                .exec();
+
+            if (!videos) {
+                throw new Error('No videos found');
+            }
+
+            const totalVideos = await this.videoModel.countDocuments({ isPublished: true });
+
+            // Log response for debugging
+            console.log('Latest videos response:', {
+                videosCount: videos.length,
+                totalVideos,
+                currentPage: page,
+                hasMore: page < Math.ceil(totalVideos / limit)
+            });
+
+            return {
+                videos,
+                totalPages: Math.ceil(totalVideos / limit),
+                currentPage: page,
+                hasMore: page < Math.ceil(totalVideos / limit)
+            };
+        } catch (error) {
+            console.error('Error in getLatestVideos:', error);
+            throw new Error(`Failed to fetch latest videos: ${error.message}`);
+        }
+    }
+}
