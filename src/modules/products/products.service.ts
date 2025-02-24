@@ -142,7 +142,7 @@ export class ProductsService {
 
                 return {
                     _id: product._id,
-                    id: product.ikasProductId,
+                    productId: product.ikasProductId,
                     name: product.name,
                     brandName: product.brand?.name || '',
                     image: mainVariant?.images?.[0]?.imageId,
@@ -151,8 +151,6 @@ export class ProductsService {
                     isFavorite: findProductIsFavorite ? true : false
                 };
             }));
-
-            console.log('productsWithFavorites', productsWithFavorites);
 
             return {
                 data: productsWithFavorites
@@ -164,7 +162,6 @@ export class ProductsService {
     }
 
     async getProductById(id: string) {
-        console.log('id', id)
         try {
             const accessToken = await this.ikasService.getAccessToken();
             // Önce MongoDB'de ara
@@ -344,8 +341,6 @@ export class ProductsService {
                 const price = mainVariant?.price;
                 const discountPrice = mainVariant?.compareAtPrice;
 
-                console.log('product', product)
-
                 return {
                     _id: product._id,
                     name: product.name,
@@ -424,7 +419,6 @@ export class ProductsService {
 
             const formattedProducts = products.map(product => {
                 const mainVariant: any = product.variants?.find(v => v.isActive) || product.variants?.[0];
-                console.log('main variant ===>', mainVariant)
 
                 const price = mainVariant?.price;
                 const discountPrice = mainVariant?.compareAtPrice;
@@ -436,12 +430,12 @@ export class ProductsService {
                     brandName: product.brand?.name || '',
                     image: mainImage?.imageId,
                     price: price || 0,
+                    productId: product.ikasProductId,
                     discount: discountPrice || null,
                     variants: product.variants || []
                 };
             });
 
-            console.log('bestSellers', formattedProducts);
 
             return {
                 success: true,
@@ -475,6 +469,7 @@ export class ProductsService {
                     brandName: product.brand?.name || '',
                     image: mainImage?.imageId,
                     price: price || 0,
+                    productId: product.ikasProductId,
                     discount: discountPrice || null,
                     variants: product.variants || []
                 };
@@ -562,7 +557,6 @@ export class ProductsService {
 
             const products = response?.data?.data?.listProduct?.data.map((product: any) => {
                 const mainVariant = product.variants?.find(v => v.isActive) || product.variants?.[0];
-                console.log('main variant ===>', mainVariant)
                 const price = mainVariant?.prices[0]?.sellPrice;
                 const discountPrice = mainVariant?.prices[0]?.discountPrice;
                 const mainImage = mainVariant?.images?.find(img => img.isMain) || mainVariant?.images?.[0];

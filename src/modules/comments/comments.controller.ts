@@ -1,7 +1,7 @@
 import { CommentsService } from './comments.service';
 
 
-import { Controller, Post, Get, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Param, UseGuards, Delete } from '@nestjs/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { CurrentUser } from '../../decorators/current-user';
 
@@ -57,5 +57,11 @@ export class CommentsController {
   @Get('video/:videoId/count')
   async getCommentsCount(@Param('videoId') videoId: string) {
     return this.commentsService.getCommentsCount(videoId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteComment(@Param('id') id: string, @CurrentUser() currentUser) {
+    return this.commentsService.deleteComment(id, currentUser._id);
   }
 } 

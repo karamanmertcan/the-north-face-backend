@@ -26,6 +26,8 @@ export class FavoritesService {
     async addFavorite(addFavoriteDto: AddFavoriteDto, userId: string) {
         const { productId, product } = addFavoriteDto;
 
+        console.log('product ===>', productId, product)
+
         if (await this.favoriteModel.findOne({ user: userId, productId }))
             throw new BadRequestException('Bu ürün zaten favorilerinizde mevcut');
 
@@ -47,7 +49,7 @@ export class FavoritesService {
         if (!favorite)
             throw new NotFoundException('Favori bulunamadı');
 
-        console.log('favorite', favorite)
+        console.log('favorite ===> deleted', favorite)
 
         return favorite;
     }

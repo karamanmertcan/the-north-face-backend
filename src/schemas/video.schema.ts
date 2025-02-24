@@ -48,6 +48,12 @@ export class Video {
 
     @Prop({ default: 0 })
     likes: number;
+
+    @Prop({ default: false })
+    isReported: boolean;
+
+    @Prop({ default: 0 })
+    reportCount: number;
 }
 export type VideoDocument = Video & Document;
 

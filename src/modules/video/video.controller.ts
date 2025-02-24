@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Param, Body, UseInterceptors, UploadedFile, Query, UseGuards, ParseIntPipe, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Put, Param, Body, UseInterceptors, UploadedFile, Query, UseGuards, ParseIntPipe, BadRequestException, Delete } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoService } from './video.service';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -16,7 +16,7 @@ export class VideoController {
     @UseInterceptors(FileInterceptor('video', {
         fileFilter: (req, file, callback) => {
             console.log('Received file:', file);
-            
+
             // İzin verilen MIME tipleri
             const allowedMimeTypes = [
                 'video/mp4',
@@ -111,4 +111,14 @@ export class VideoController {
         return this.videoService.dislikeVideo(id, currentUser._id);
     }
 
+
+    @Delete(':id')
+    @UseGuards(JwtAuthGuard)
+    async deleteVideo(
+        @Param('id') id: string,
+        @CurrentUser() currentUser,
+    ) {
+        console.log('id', id)
+        return this.videoService.deleteVideo(id, currentUser._id);
+    }
 } 

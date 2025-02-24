@@ -26,6 +26,7 @@ export class FavoritesController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   removeFavorite(@CurrentUser() currentUser, @Param('id') id: string) {
+    console.log('favorite remove id ===>', id)
     return this.favoritesService.removeFavorite(id, currentUser._id);
   }
 }

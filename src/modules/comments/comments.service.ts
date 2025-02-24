@@ -95,4 +95,16 @@ export class CommentsService {
         console.log('comments', comments)
         return comments;
     }
+
+
+    async deleteComment(commentId: string, userId: string) {
+        const comment = await this.commentModel.findById(commentId);
+        if (!comment) {
+            throw new Error('Comment not found');
+        }
+        if (comment.user.toString() !== userId.toString()) {
+            throw new Error('You are not allowed to delete this comment');
+        }
+        return this.commentModel.findByIdAndDelete(commentId);
+    }
 } 

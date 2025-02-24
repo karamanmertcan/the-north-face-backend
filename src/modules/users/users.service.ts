@@ -94,8 +94,6 @@ export class UsersService {
 
 
     async updateUser(userId: string, updateUserDto: UpdateUserDto) {
-        console.log('userid', userId, updateUserDto)
-
         const user = await this.userModel.findByIdAndUpdate(userId, updateUserDto, { new: true });
 
 
@@ -164,7 +162,6 @@ export class UsersService {
     }
 
     async getUserProfileById(userId: string, currentUserId: string) {
-        console.log('userId', userId, 'currentUserId', currentUserId)
         try {
             const user = await this.userModel.findById(userId);
             if (!user) {
@@ -177,7 +174,7 @@ export class UsersService {
                 following: userId
             });
 
-            const videos = await this.videoModel.find({ creator: userId });
+            const videos = await this.videoModel.find({ creator: userId }).populate('creator');
             const followers = await this.followersFollowingsModel.countDocuments({ following: userId });
             const following = await this.followersFollowingsModel.countDocuments({ follower: userId });
 
@@ -234,8 +231,6 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        console.log('addressData', addressData)
-        console.log('addressId', addressId)
 
         const addressIndex = user.addresses.findIndex((addr: any) => addr._id.toString() === addressId);
         if (addressIndex === -1) {

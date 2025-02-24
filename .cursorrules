@@ -1,0 +1,43 @@
+## Tech Stack:
+
+- Backend: Node.js with Nest.js
+- Database: MongoDB with Mongoose ODM
+- Authentication: JSON Web Tokens (JWT), SIWE
+
+## Workflow Setup
+
+- Use pnpm when adding dependencies
+- Be mindful if dependencies are for development and use the appropriate flags
+- Follow semantic versioning when updating dependencies
+- Document API changes in changelog
+
+## Coding Standards
+
+- Use TypeScript for all new code
+- Use proper TypeScript types for all variables, functions and return types
+- Use barrel imports
+- Implement proper error handling and input validation
+- Always use relative imports
+- Follow consistent naming conventions:
+  - Use PascalCase for classes and interfaces
+  - Use camelCase for variables and functions
+  - Use UPPER_SNAKE_CASE for constants
+
+## Best Practices
+
+- Ensure secure, efficient code following RESTful API best practices
+- Respect SOLID principles
+- Focus on performance and readability
+- Implement proper logging and monitoring
+- Write unit tests for critical business logic
+- Use DTOs for request/response validation
+- Implement proper rate limiting and security headers
+- Document APIs using Swagger/OpenAPI
+
+## Security
+
+- Never commit sensitive data or credentials
+- Implement proper input sanitization
+- Use environment variables for configuration
+- Implement proper authentication and authorization checks
+- Regular security audits of dependencies

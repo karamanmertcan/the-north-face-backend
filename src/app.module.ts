@@ -20,6 +20,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { UuidModule } from 'nestjs-uuid';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ReportModule } from './modules/report/report.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PaymentModule,
     OrdersModule,
     CustomersModule,
+    ReportModule
 
   ],
   controllers: [AppController],

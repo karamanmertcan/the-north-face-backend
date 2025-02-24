@@ -39,3 +39,6 @@ lerna-debug.log*
 .env.local
 
 /.env
+
+# windsurf rules
+.windsurfrules
