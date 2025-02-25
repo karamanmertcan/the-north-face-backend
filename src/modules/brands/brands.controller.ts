@@ -4,8 +4,7 @@ import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 
 @Controller('brands')
 export class BrandsController {
-  constructor(private readonly brandsService: BrandsService) { }
-
+  constructor(private readonly brandsService: BrandsService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get()
@@ -24,5 +23,4 @@ export class BrandsController {
   async getBrand(@Param('brandId') brandId: string) {
     return this.brandsService.getProductsByBrand(brandId);
   }
-
 }

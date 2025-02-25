@@ -5,8 +5,12 @@ import { Favorite, FavoriteSchema } from 'src/schemas/favorite.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Favorite.name, schema: FavoriteSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Favorite.name, schema: FavoriteSchema },
+    ]),
+  ],
   controllers: [FavoritesController],
   providers: [FavoritesService],
 })
-export class FavoritesModule { }
+export class FavoritesModule {}

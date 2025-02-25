@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { Model } from 'mongoose';
@@ -9,12 +13,14 @@ import { generateUsername } from 'src/utils/generate-username';
 import { LoginDto } from 'src/dtos/auth/login.dto';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { IkasUser, IkasUserDocument } from '../ikas-users/schemas/ikas-user.schema';
+import {
+    IkasUser,
+    IkasUserDocument,
+} from '../ikas-users/schemas/ikas-user.schema';
 import { IkasService } from 'src/services/ikas.service';
 
 @Injectable()
 export class AuthService {
-
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         @InjectModel(IkasUser.name) private ikasUserModel: Model<IkasUserDocument>,
@@ -40,18 +46,16 @@ export class AuthService {
                 lastName,
                 isAcceptMarketing: true,
                 captchaToken: null,
-                phone: ''
+                phone: '',
             });
 
-            console.log('deneme user', ikasResponse)
-
-
+            console.log('deneme user', ikasResponse);
 
             if (ikasResponse?.customer) {
                 const ikasCustomer = ikasResponse.customer;
                 const ikasToken = {
                     token: ikasResponse.token,
-                    tokenExpiry: ikasResponse.tokenExpiry
+                    tokenExpiry: ikasResponse.tokenExpiry,
                 };
 
                 // Create IKAS user in our database
@@ -60,7 +64,9 @@ export class AuthService {
                     email: ikasCustomer.email,
                     firstName: ikasCustomer.firstName,
                     lastName: ikasCustomer.lastName,
-                    fullName: ikasCustomer.fullName || `${ikasCustomer.firstName} ${ikasCustomer.lastName}`,
+                    fullName:
+                        ikasCustomer.fullName ||
+                        `${ikasCustomer.firstName} ${ikasCustomer.lastName}`,
                     phone: ikasCustomer.phone,
                     gender: ikasCustomer.gender,
                     birthDate: ikasCustomer.birthDate,
@@ -69,7 +75,7 @@ export class AuthService {
                     accountStatus: ikasCustomer.accountStatus,
                     preferredLanguage: ikasCustomer.preferredLanguage,
                     addresses: ikasCustomer.addresses,
-                    ikasToken
+                    ikasToken,
                 });
 
                 // Generate a username from email (before the @ symbol)
@@ -94,12 +100,11 @@ export class AuthService {
                     ikasUserId: ikasUser._id,
                 });
 
-
                 const payload = { email: user.email, id: user._id };
 
                 return {
-                    token: this.jwtService.sign(payload),
-                    user: user?.user
+                    success: true,
+                    user: user,
                 };
             }
         } catch (error) {
@@ -113,16 +118,16 @@ export class AuthService {
             email,
             password: hashedPassword,
             firstName,
-            lastName
+            lastName,
         });
 
-        console.log('user data 2', user)
+        console.log('user data 2', user);
 
         const payload = { email: user.email, id: user._id };
 
         return {
-            token: this.jwtService.sign(payload),
-            user: user
+            success: true,
+            user: user,
         };
     }
 
@@ -141,8 +146,8 @@ export class AuthService {
         };
 
         return {
-            token: this.jwtService.sign(payload),
-            user: validatedUser
+            accessToken: this.jwtService.sign(payload),
+            user: validatedUser,
         };
     }
 
@@ -157,11 +162,13 @@ export class AuthService {
                 const ikasCustomer = ikasResponse.data.customerLogin.customer;
                 const ikasToken = {
                     token: ikasResponse.data.customerLogin.token,
-                    tokenExpiry: ikasResponse.data.customerLogin.tokenExpiry
+                    tokenExpiry: ikasResponse.data.customerLogin.tokenExpiry,
                 };
 
                 // Check if IKAS user exists in our database
-                let ikasUser = await this.ikasUserModel.findOne({ ikasId: ikasCustomer.id });
+                let ikasUser = await this.ikasUserModel.findOne({
+                    ikasId: ikasCustomer.id,
+                });
 
                 if (ikasUser) {
                     // Update existing IKAS user
@@ -180,9 +187,9 @@ export class AuthService {
                             accountStatus: ikasCustomer.accountStatus,
                             preferredLanguage: ikasCustomer.preferredLanguage,
                             addresses: ikasCustomer.addresses,
-                            ikasToken
+                            ikasToken,
                         },
-                        { new: true }
+                        { new: true },
                     );
                 } else {
                     // Create new IKAS user
@@ -200,7 +207,7 @@ export class AuthService {
                         accountStatus: ikasCustomer.accountStatus,
                         preferredLanguage: ikasCustomer.preferredLanguage,
                         addresses: ikasCustomer.addresses,
-                        ikasToken
+                        ikasToken,
                     });
                 }
 
@@ -226,13 +233,11 @@ export class AuthService {
                         password: await bcrypt.hash(pass, 10),
                         firstName: ikasCustomer.firstName,
                         lastName: ikasCustomer.lastName,
-                        ikasUserId: ikasUser.id
+                        ikasUserId: ikasUser.id,
                     });
                 }
 
-                console.log('validated user 3', user)
-
-
+                console.log('validated user 3', user);
 
                 return user;
             }
@@ -242,7 +247,7 @@ export class AuthService {
 
         // If IKAS login fails or error occurs, try local login
         const user = await this.userModel.findOne({ email });
-        if (user && await bcrypt.compare(pass, user.password)) {
+        if (user && (await bcrypt.compare(pass, user.password))) {
             const { password, ...result } = user.toObject();
             return result;
         }
@@ -273,9 +278,9 @@ export class AuthService {
                 {
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`,
-                    }
-                }
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                },
             );
 
             console.log('İkas webhook listesi:', response.data);
@@ -285,7 +290,6 @@ export class AuthService {
             throw new Error('Webhook listesi alınamadı');
         }
     }
-
 
     async getMe() {
         try {
@@ -305,9 +309,9 @@ export class AuthService {
                 {
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`,
-                    }
-                }
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                },
             );
 
             console.log('İkas webhook listesi:', response.data);
@@ -323,9 +327,9 @@ export class AuthService {
             // Gelen data string olarak geliyor, JSON'a çevirelim
             const data = JSON.parse(webhookData.data);
 
-            console.log('webhookData', webhookData)
+            console.log('webhookData', webhookData);
 
-            console.log('data 2', data)
+            console.log('data 2', data);
 
             switch (webhookData.scope) {
                 case 'store/customer/created':
@@ -337,7 +341,9 @@ export class AuthService {
                         lastName: data.lastName,
                         fullName: data.fullName,
                         accountStatus: data.accountStatus,
-                        accountStatusUpdatedAt: new Date(data.accountStatusUpdatedAt).getTime(),
+                        accountStatusUpdatedAt: new Date(
+                            data.accountStatusUpdatedAt,
+                        ).getTime(),
                         addresses: data.addresses,
                         attributes: data.attributes,
                         customerSequence: data.customerSequence,
@@ -347,25 +353,27 @@ export class AuthService {
                         isPhoneVerified: data.isPhoneVerified,
                         phone: data.phone,
                         phoneSubscriptionStatus: data.phoneSubscriptionStatus,
-                        phoneSubscriptionStatusUpdatedAt: new Date(data.phoneSubscriptionStatusUpdatedAt).getTime(),
+                        phoneSubscriptionStatusUpdatedAt: new Date(
+                            data.phoneSubscriptionStatusUpdatedAt,
+                        ).getTime(),
                         preferredLanguage: data.preferredLanguage,
                         registrationSource: data.registrationSource,
                         smsSubscriptionStatus: data.smsSubscriptionStatus,
-                        smsSubscriptionStatusUpdatedAt: new Date(data.smsSubscriptionStatusUpdatedAt).getTime(),
+                        smsSubscriptionStatusUpdatedAt: new Date(
+                            data.smsSubscriptionStatusUpdatedAt,
+                        ).getTime(),
                         subscriptionStatus: data.subscriptionStatus,
-                        subscriptionStatusUpdatedAt: new Date(data.subscriptionStatusUpdatedAt).getTime(),
+                        subscriptionStatusUpdatedAt: new Date(
+                            data.subscriptionStatusUpdatedAt,
+                        ).getTime(),
                         tagIds: data.tagIds,
                         customerGroupIds: data.customerGroupIds,
-                        customerSegmentIds: data.customerSegmentIds
+                        customerSegmentIds: data.customerSegmentIds,
                     });
-
-
 
                     return newIkasUser;
 
                 case 'store/customer/updated':
-
-
                     // Mevcut kullanıcıyı güncelle
                     const updatedIkasUser = await this.ikasUserModel.findOneAndUpdate(
                         { ikasId: data.id },
@@ -375,7 +383,9 @@ export class AuthService {
                             lastName: data.lastName,
                             fullName: data.fullName,
                             accountStatus: data.accountStatus,
-                            accountStatusUpdatedAt: new Date(data.accountStatusUpdatedAt).getTime(),
+                            accountStatusUpdatedAt: new Date(
+                                data.accountStatusUpdatedAt,
+                            ).getTime(),
                             addresses: data.addresses,
                             attributes: data.attributes,
                             customerSequence: data.customerSequence,
@@ -385,21 +395,25 @@ export class AuthService {
                             isPhoneVerified: data.isPhoneVerified,
                             phone: data.phone,
                             phoneSubscriptionStatus: data.phoneSubscriptionStatus,
-                            phoneSubscriptionStatusUpdatedAt: new Date(data.phoneSubscriptionStatusUpdatedAt).getTime(),
+                            phoneSubscriptionStatusUpdatedAt: new Date(
+                                data.phoneSubscriptionStatusUpdatedAt,
+                            ).getTime(),
                             preferredLanguage: data.preferredLanguage,
                             registrationSource: data.registrationSource,
                             smsSubscriptionStatus: data.smsSubscriptionStatus,
-                            smsSubscriptionStatusUpdatedAt: new Date(data.smsSubscriptionStatusUpdatedAt).getTime(),
+                            smsSubscriptionStatusUpdatedAt: new Date(
+                                data.smsSubscriptionStatusUpdatedAt,
+                            ).getTime(),
                             subscriptionStatus: data.subscriptionStatus,
-                            subscriptionStatusUpdatedAt: new Date(data.subscriptionStatusUpdatedAt).getTime(),
+                            subscriptionStatusUpdatedAt: new Date(
+                                data.subscriptionStatusUpdatedAt,
+                            ).getTime(),
                             tagIds: data.tagIds,
                             customerGroupIds: data.customerGroupIds,
-                            customerSegmentIds: data.customerSegmentIds
+                            customerSegmentIds: data.customerSegmentIds,
                         },
-                        { new: true, upsert: true }
+                        { new: true, upsert: true },
                     );
-
-
 
                     return updatedIkasUser;
 

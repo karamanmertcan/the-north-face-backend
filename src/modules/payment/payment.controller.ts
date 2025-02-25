@@ -1,27 +1,35 @@
-import { Controller, Post, Body, UseGuards, Get, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Query,
+  Res,
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Response } from 'express';
 
 @Controller('payment')
 export class PaymentController {
-    constructor(private readonly paymentService: PaymentService) { }
+  constructor(private readonly paymentService: PaymentService) {}
 
-    @UseGuards(JwtAuthGuard)
-    @Post('create-3d')
-    async create3DPayment(@Body() paymentData: any) {
-        return this.paymentService.create3DPayment(paymentData);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Post('create-3d')
+  async create3DPayment(@Body() paymentData: any) {
+    return this.paymentService.create3DPayment(paymentData);
+  }
 
-    @Post('callback')
-    async handle3DCallback(@Body() callbackData: any, @Res() res: Response) {
-        try {
-            const result = await this.paymentService.handle3DCallback(callbackData);
+  @Post('callback')
+  async handle3DCallback(@Body() callbackData: any, @Res() res: Response) {
+    try {
+      const result = await this.paymentService.handle3DCallback(callbackData);
 
-            console.log("result", result);
+      console.log('result', result);
 
-            // Başarılı ödeme sayfası HTML'i
-            const successHtml = `
+      // Başarılı ödeme sayfası HTML'i
+      const successHtml = `
                 <!DOCTYPE html>
                 <html>
                     <head>
@@ -84,10 +92,10 @@ export class PaymentController {
                 </html>
             `;
 
-            res.send(successHtml);
-        } catch (error) {
-            // Hata sayfası HTML'i
-            const errorHtml = `
+      res.send(successHtml);
+    } catch (error) {
+      // Hata sayfası HTML'i
+      const errorHtml = `
                 <!DOCTYPE html>
                 <html>
                     <head>
@@ -144,14 +152,14 @@ export class PaymentController {
                 </html>
             `;
 
-            res.send(errorHtml);
-        }
+      res.send(errorHtml);
     }
+  }
 
-    @Post('cancel')
-    async handleCancel(@Body() body: any, @Res() res: Response) {
-        console.log("queryParams", body);
-        const cancelHtml = `
+  @Post('cancel')
+  async handleCancel(@Body() body: any, @Res() res: Response) {
+    console.log('queryParams', body);
+    const cancelHtml = `
             <!DOCTYPE html>
             <html>
                 <head>
@@ -206,6 +214,6 @@ export class PaymentController {
             </html>
         `;
 
-        res.send(cancelHtml);
-    }
-} 
+    res.send(cancelHtml);
+  }
+}

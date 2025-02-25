@@ -3,13 +3,12 @@ import { IkasService } from './ikas.service';
 
 @Controller('ikas')
 export class IkasController {
-  constructor(private readonly ikasService: IkasService) { }
-
+  constructor(private readonly ikasService: IkasService) {}
 
   @Post('webhooks/orders')
   @HttpCode(200)
   async getWebhooks(@Body() body: any) {
-    console.log(body)
+    console.log(body);
     return this.ikasService.getWebhooks();
   }
 }

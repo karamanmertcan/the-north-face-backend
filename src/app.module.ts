@@ -50,10 +50,9 @@ import { ReportModule } from './modules/report/report.module';
     PaymentModule,
     OrdersModule,
     CustomersModule,
-    ReportModule
-
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

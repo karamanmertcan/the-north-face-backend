@@ -1,28 +1,28 @@
 import {
-    ArgumentMetadata,
-    BadRequestException,
-    PipeTransform,
+  ArgumentMetadata,
+  BadRequestException,
+  PipeTransform,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 
 export type ObjectId = Types.ObjectId;
 
 export const MakeObjectId = (
-    val: string,
-    errorMsg = 'Cast to ObjectId failed.',
+  val: string,
+  errorMsg = 'Cast to ObjectId failed.',
 ): ObjectId => {
-    if (!Types.ObjectId.isValid(val)) {
-        throw new BadRequestException(errorMsg);
-    }
+  if (!Types.ObjectId.isValid(val)) {
+    throw new BadRequestException(errorMsg);
+  }
 
-    return new Types.ObjectId(val);
+  return new Types.ObjectId(val);
 };
 
 export class ParseObjectIdPipe implements PipeTransform<string, ObjectId> {
-    // eslint-disable-next-line class-methods-use-this
-    transform(value: string, metadata: ArgumentMetadata): ObjectId {
-        const { data } = metadata;
+  // eslint-disable-next-line class-methods-use-this
+  transform(value: string, metadata: ArgumentMetadata): ObjectId {
+    const { data } = metadata;
 
-        return MakeObjectId(value, `Param validation for field: '${data}' failed.`);
-    }
+    return MakeObjectId(value, `Param validation for field: '${data}' failed.`);
+  }
 }

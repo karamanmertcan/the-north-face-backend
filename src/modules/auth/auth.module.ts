@@ -8,12 +8,18 @@ import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { IkasUsersModule } from '../ikas-users/ikas-users.module';
 import { IkasModule } from '../ikas/ikas.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { IkasUser, IkasUserSchema } from '../ikas-users/schemas/ikas-user.schema';
+import {
+  IkasUser,
+  IkasUserSchema,
+} from '../ikas-users/schemas/ikas-user.schema';
 import { IkasService } from 'src/services/ikas.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }, { name: IkasUser.name, schema: IkasUserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: IkasUser.name, schema: IkasUserSchema },
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -23,10 +29,10 @@ import { IkasService } from 'src/services/ikas.service';
       inject: [ConfigService],
     }),
     IkasUsersModule,
-    IkasModule
+    IkasModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, IkasService],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

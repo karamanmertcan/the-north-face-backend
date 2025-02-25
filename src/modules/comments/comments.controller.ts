@@ -1,13 +1,21 @@
 import { CommentsService } from './comments.service';
 
-
-import { Controller, Post, Get, Put, Body, Param, UseGuards, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  Delete,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { CurrentUser } from '../../decorators/current-user';
 
 @Controller('comments')
 export class CommentsController {
-  constructor(private readonly commentsService: CommentsService) { }
+  constructor(private readonly commentsService: CommentsService) {}
 
   @Post('video/:videoId')
   @UseGuards(JwtAuthGuard)
@@ -16,7 +24,11 @@ export class CommentsController {
     @CurrentUser() currentUser,
     @Body('content') content: string,
   ) {
-    return this.commentsService.createComment(videoId, currentUser._id, content);
+    return this.commentsService.createComment(
+      videoId,
+      currentUser._id,
+      content,
+    );
   }
 
   @Post('video/:videoId/reply/:commentId')
@@ -27,7 +39,12 @@ export class CommentsController {
     @CurrentUser() currentUser,
     @Body('content') content: string,
   ) {
-    return this.commentsService.createReply(videoId, currentUser._id, content, commentId);
+    return this.commentsService.createReply(
+      videoId,
+      currentUser._id,
+      content,
+      commentId,
+    );
   }
 
   @Get('video/:videoId')
@@ -37,19 +54,13 @@ export class CommentsController {
 
   @Put(':id/like')
   @UseGuards(JwtAuthGuard)
-  async likeComment(
-    @Param('id') id: string,
-    @CurrentUser() currentUser,
-  ) {
+  async likeComment(@Param('id') id: string, @CurrentUser() currentUser) {
     return this.commentsService.likeComment(id, currentUser._id);
   }
 
   @Put(':id/dislike')
   @UseGuards(JwtAuthGuard)
-  async dislikeComment(
-    @Param('id') id: string,
-    @CurrentUser() currentUser,
-  ) {
+  async dislikeComment(@Param('id') id: string, @CurrentUser() currentUser) {
     return this.commentsService.dislikeComment(id, currentUser._id);
   }
 
@@ -64,4 +75,4 @@ export class CommentsController {
   async deleteComment(@Param('id') id: string, @CurrentUser() currentUser) {
     return this.commentsService.deleteComment(id, currentUser._id);
   }
-} 
+}

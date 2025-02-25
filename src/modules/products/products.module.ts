@@ -12,10 +12,10 @@ import { ScheduleModule } from '@nestjs/schedule';
     ScheduleModule.forRoot(),
     MongooseModule.forFeature([
       { name: Favorite.name, schema: FavoriteSchema },
-      { name: Product.name, schema: ProductSchema }
-    ])
+      { name: Product.name, schema: ProductSchema },
+    ]),
   ],
   controllers: [ProductsController],
-  providers: [ProductsService, IkasService]
+  providers: [ProductsService, IkasService],
 })
 export class ProductsModule {}

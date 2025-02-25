@@ -6,19 +6,32 @@ import { CurrentUser } from 'src/decorators/current-user';
 
 @Controller('following-followers')
 export class FollowingFollowersController {
-  constructor(private readonly followingFollowersService: FollowingFollowersService) { }
-
+  constructor(
+    private readonly followingFollowersService: FollowingFollowersService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post('follow')
-  async follow(@Body() followingFollowersDto: FollowingFollowersDto, @CurrentUser() currentUser) {
-    return this.followingFollowersService.follow(followingFollowersDto, currentUser._id);
+  async follow(
+    @Body() followingFollowersDto: FollowingFollowersDto,
+    @CurrentUser() currentUser,
+  ) {
+    return this.followingFollowersService.follow(
+      followingFollowersDto,
+      currentUser._id,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('unfollow')
-  async unfollow(@Body() followingFollowersDto: FollowingFollowersDto, @CurrentUser() currentUser) {
-    return this.followingFollowersService.unfollow(followingFollowersDto, currentUser._id);
+  async unfollow(
+    @Body() followingFollowersDto: FollowingFollowersDto,
+    @CurrentUser() currentUser,
+  ) {
+    return this.followingFollowersService.unfollow(
+      followingFollowersDto,
+      currentUser._id,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

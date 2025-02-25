@@ -5,8 +5,7 @@ import { CurrentUser } from 'src/decorators/current-user';
 
 @Controller('liked-videos')
 export class LikedVideosController {
-  constructor(private readonly likedVideosService: LikedVideosService) { }
-
+  constructor(private readonly likedVideosService: LikedVideosService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get()

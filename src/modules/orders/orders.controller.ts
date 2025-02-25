@@ -1,10 +1,18 @@
-import { Body, Controller, Post, UseGuards, Get, Request, Param } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UseGuards,
+  Get,
+  Request,
+  Param,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -18,7 +26,6 @@ export class OrdersController {
     return this.ordersService.getUserOrders(req.user.email);
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getOrderById(@Param('id') id: string) {
@@ -29,7 +36,13 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   async refundOrder(
     @Param('id') orderId: string,
-    @Body() refundData: { orderLineItemId: string; quantity: number; price: number, stockLocationId: string }
+    @Body()
+    refundData: {
+      orderLineItemId: string;
+      quantity: number;
+      price: number;
+      stockLocationId: string;
+    },
   ) {
     console.log('Refund Data:', orderId);
     return this.ordersService.refundOrder(
@@ -37,7 +50,7 @@ export class OrdersController {
       refundData.orderLineItemId,
       refundData.quantity,
       refundData.price,
-      refundData.stockLocationId
+      refundData.stockLocationId,
     );
   }
 

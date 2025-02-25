@@ -6,9 +6,11 @@ import { LikeVideo, LikeVideoSchema } from 'src/schemas/like-video.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: LikeVideo.name, schema: LikeVideoSchema }]),
+    MongooseModule.forFeature([
+      { name: LikeVideo.name, schema: LikeVideoSchema },
+    ]),
   ],
   controllers: [LikedVideosController],
   providers: [LikedVideosService],
 })
-export class LikedVideosModule { }
+export class LikedVideosModule {}
