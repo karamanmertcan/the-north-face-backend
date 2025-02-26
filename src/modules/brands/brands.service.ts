@@ -15,7 +15,7 @@ export class BrandsService {
     private productsService: ProductsService,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
-  ) {}
+  ) { }
 
   async getBrands(page: number = 1, limit: number = 10) {
     try {
@@ -185,11 +185,14 @@ export class BrandsService {
             }
         `;
 
+
       const variables = {
         brandId: {
           eq: brandId,
         },
       };
+
+      console.log('variables ===>', variables);
 
       const response = await axios.post(
         'https://api.myikas.com/api/v1/admin/graphql',
@@ -205,8 +208,11 @@ export class BrandsService {
         },
       );
 
+      console.log('response ===>', response.data.data.listProduct);
+
       // Process products to include normalized variants
       const productsData = response.data.data.listProduct.data;
+      console.log('productsData ===>', productsData);
       const processedProducts = await Promise.all(
         productsData.map(async (productData: any) => {
           // Convert IKAS product to our MongoDB schema format
@@ -277,12 +283,75 @@ export class BrandsService {
         }),
       );
 
+      console.log('processedProducts ===>', processedProducts);
+
       return {
         ...response.data.data.listProduct,
         data: processedProducts,
       };
     } catch (error) {
       console.error('Marka ürünleri listesi alma hatası:', error);
+      throw error;
+    }
+  }
+
+  // Updated method to get brands from IKAS and products from MongoDB
+  async getBrandsWithProducts(limit: number = 4, userId: string) {
+    try {
+      // Get brands from IKAS
+      const brands = await this.getBrands();
+
+      // Process brands to include image URLs and add rating
+      const processedBrands = await Promise.all(
+        brands.map(async (brand: any) => {
+          // Get products for this brand from our database
+          const products = await this.productModel
+            .find({ brandId: brand.id })
+            .limit(limit)
+            .lean();
+
+          // Process products to match the expected format
+          const processedProducts = await Promise.all(
+            products.map(async (product) => {
+              // Find the main variant
+              const mainVariant = product.variants?.find(v => v.isActive) || product.variants?.[0];
+
+              // Get the main image
+              const mainImage = mainVariant?.images?.find(img => img.isMain) || mainVariant?.images?.[0];
+
+              // Check if product is in favorites
+              const isFavorite = await this.favoriteModel.exists({ productId: product.ikasProductId, user: userId });
+
+              return {
+                _id: product.ikasProductId,
+                name: product.name,
+                brandName: brand.name,
+                image: mainImage?.imageId,
+                price: mainVariant?.price || 0,
+                discount: mainVariant?.compareAtPrice ?
+                  Math.round(((mainVariant.compareAtPrice - mainVariant.price) / mainVariant.compareAtPrice) * 100) : 0,
+                isFavorite: !!isFavorite
+              };
+            })
+          );
+
+          return {
+            _id: brand.id,
+            name: brand.name,
+            logo: brand.imageId ? `https://cdn.myikas.com/images/f9291f47-d657-4569-9a4e-e2f64abed207/${brand.imageId}/image_720.webp` : null,
+            description: brand.description || '',
+            rating: (Math.random() * (5 - 4) + 4).toFixed(1), // Random rating between 4.0-5.0
+            products: processedProducts
+          };
+        })
+      );
+
+      // Filter out brands with no products
+      const brandsWithProducts = processedBrands.filter(brand => brand.products && brand.products.length > 0);
+
+      return brandsWithProducts;
+    } catch (error) {
+      console.error('Error fetching brands with products:', error);
       throw error;
     }
   }

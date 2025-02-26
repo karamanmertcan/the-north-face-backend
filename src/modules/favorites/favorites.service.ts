@@ -117,4 +117,8 @@ export class FavoritesService {
 
         return favorite;
     }
+
+    async getUserFavorites(userId: string) {
+        return this.favoriteModel.find({ user: userId }).populate('product');
+    }
 }

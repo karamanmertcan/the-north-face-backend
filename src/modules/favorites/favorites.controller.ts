@@ -86,4 +86,17 @@ export class FavoritesController {
     console.log('favorite remove id ===>', id);
     return this.favoritesService.removeFavorite(id, currentUser._id);
   }
+
+  @ApiOperation({
+    summary: 'Get favorites by user',
+    description: 'Get all favorites for a specific user',
+  })
+  @ApiResponse({ status: 200, description: 'Returns list of user favorites' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @Get('user')
+  getUserFavorites(@CurrentUser() currentUser) {
+    return this.favoritesService.getUserFavorites(currentUser._id);
+  }
 }
+

@@ -114,6 +114,13 @@ export class VideoController {
     return this.videoService.getVideos(page, 20, currentUser._id);
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user')
+  async getUserVideos(@CurrentUser() currentUser) {
+    return this.videoService.getUserVideos(currentUser._id);
+  }
+
   @Get('single/:id')
   async getVideo(@Param('id', new ParseObjectIdPipe()) id: ObjectId) {
     console.log('id', id);

@@ -187,9 +187,9 @@ export class VideoService {
             }),
             userId
               ? this.followersFollowingsModel.exists({
-                  follower: userId,
-                  following: video.creator._id,
-                })
+                follower: userId,
+                following: video.creator._id,
+              })
               : Promise.resolve(false),
           ]);
 
@@ -374,5 +374,10 @@ export class VideoService {
     return {
       message: 'Video deleted successfully',
     };
+  }
+
+
+  async getUserVideos(userId: string) {
+    return this.videoModel.find({ creator: userId }).populate('creator');
   }
 }

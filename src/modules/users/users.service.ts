@@ -716,4 +716,22 @@ export class UsersService {
         user.addresses.splice(addressIndex, 1);
         await user.save();
     }
+
+    async getAllUsers(userId: string) {
+        const user = await this.userModel.findById(userId);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        return this.userModel.find({}).select('-password').lean();
+    }
+
+    async getFavorites(userId: string) {
+        const user = await this.userModel.findById(userId);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        return this.favoriteModel.find({ user: userId }).populate('product').lean();
+    }
 }

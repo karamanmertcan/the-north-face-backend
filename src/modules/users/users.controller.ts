@@ -21,7 +21,7 @@ import { UpdateUserAddressDto } from 'src/dtos/user/update-address.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get()
@@ -113,5 +113,11 @@ export class UsersController {
     console.log('user in controller', user);
     console.log('addressId in controller', addressId);
     return this.usersService.deleteUserAddress(user._id, addressId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('all')
+  async getAllUsers(@CurrentUser() user) {
+    return this.usersService.getAllUsers(user._id);
   }
 }

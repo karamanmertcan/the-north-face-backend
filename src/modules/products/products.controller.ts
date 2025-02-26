@@ -37,9 +37,11 @@ export class ProductsController {
     description: 'Product ID',
     example: '60d21b4667d0d8992e610c85',
   })
+  @UseGuards(JwtAuthGuard)
   @Get('list/:id')
-  async getProductById(@Param('id') id: string) {
-    return this.productsService.getProductById(id);
+  async getProductById(@Param('id') id: string, @CurrentUser() currentUser) {
+    console.log('İd ===>', id)
+    return this.productsService.getProductById(id, currentUser._id);
   }
 
   @ApiOperation({

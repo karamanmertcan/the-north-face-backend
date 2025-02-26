@@ -13,7 +13,7 @@ export class ProductsService {
     private ikasService: IkasService,
     @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-  ) {}
+  ) { }
 
   @Cron(CronExpression.EVERY_6_HOURS)
   async syncProducts() {
@@ -178,7 +178,9 @@ export class ProductsService {
     }
   }
 
-  async getProductById(id: string) {
+  async getProductById(id: string, userId: string) {
+    console.log('inner id', id)
+    console.log('inner userId', userId)
     try {
       const accessToken = await this.ikasService.getAccessToken();
       // Önce MongoDB'de ara
@@ -206,6 +208,7 @@ export class ProductsService {
 
       const findProductIsFavorite = await this.favoriteModel.findOne({
         productId: dbProduct.ikasProductId,
+        user: userId,
       });
 
       // Format the response to match IKAS API structure
