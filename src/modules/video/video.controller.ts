@@ -35,6 +35,19 @@ export class VideoController {
       properties: {
         video: { type: 'string', format: 'binary' },
         caption: { type: 'string' },
+        taggedProducts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              productId: { type: 'string' },
+              variantId: { type: 'string' },
+              name: { type: 'string' },
+              price: { type: 'number' },
+              mainImageId: { type: 'string' },
+            }
+          }
+        },
       },
     },
   })
@@ -70,6 +83,7 @@ export class VideoController {
   async uploadVideo(
     @UploadedFile() file: Express.Multer.File,
     @Body('caption') caption: string,
+    @Body('taggedProducts') taggedProductsString: string,
     @CurrentUser() currentUser,
   ) {
     if (!file) {
@@ -80,11 +94,22 @@ export class VideoController {
       throw new BadRequestException('Caption is required');
     }
 
+    let taggedProducts = [];
+    try {
+      if (taggedProductsString) {
+        taggedProducts = JSON.parse(taggedProductsString);
+      }
+    } catch (error) {
+      console.error('Error parsing tagged products:', error);
+      throw new BadRequestException('Invalid tagged products format');
+    }
+
     console.log('Received upload request:', {
       filename: file.originalname,
       size: file.size,
       mimetype: file.mimetype,
       caption,
+      taggedProducts,
       userId: currentUser._id,
     });
 
@@ -93,6 +118,7 @@ export class VideoController {
         file,
         caption,
         currentUser._id,
+        taggedProducts,
       );
       return result;
     } catch (error) {

@@ -88,6 +88,7 @@ export class VideoService {
     file: Express.Multer.File,
     caption: string,
     userId: string,
+    taggedProducts: Array<any> = [],
   ) {
     let tempVideoPath = null;
     try {
@@ -139,6 +140,7 @@ export class VideoService {
         likes: 0,
         dislikes: 0,
         views: 0,
+        taggedProducts: taggedProducts || [],
       });
 
       const savedVideo = await video.save();

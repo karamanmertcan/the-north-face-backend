@@ -9,10 +9,12 @@ import {
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('orders')
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -24,6 +26,13 @@ export class OrdersController {
   @Get('my-orders')
   async getMyOrders(@Request() req) {
     return this.ordersService.getUserOrders(req.user.email);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Get('taggable-products')
+  async getTaggableProducts(@Request() req) {
+    return this.ordersService.getUserOrderedProducts(req.user._id);
   }
 
   @UseGuards(JwtAuthGuard)

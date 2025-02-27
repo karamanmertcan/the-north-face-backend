@@ -53,6 +53,37 @@ export class Video {
 
   @Prop({ default: 0 })
   reportCount: number;
+
+  @Prop({
+    type: [{
+      productId: String,
+      variantId: String,
+      name: String,
+      price: Number,
+      mainImageId: String,
+      brand: {
+        id: String,
+        name: String,
+      },
+      selectedVariants: [{ valueId: String, valueName: String }],
+    }],
+    default: [],
+  })
+  taggedProducts: Array<{
+    productId: string;
+    variantId: string;
+    name: string;
+    price: number;
+    mainImageId: string;
+    brand: {
+      id: string;
+      name: string;
+    };
+    selectedVariants: Array<{
+      valueId: string;
+      valueName: string;
+    }>;
+  }>;
 }
 export type VideoDocument = Video & Document;
 

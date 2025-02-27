@@ -6,15 +6,21 @@ import { ProductsService } from '../products/products.service';
 import { Product, ProductSchema } from 'src/schemas/product.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Favorite, FavoriteSchema } from 'src/schemas/favorite.schema';
+import { Brand, BrandSchema } from 'src/schemas/brand.schema';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BrandFollowers, BrandFollowersSchema } from 'src/schemas/brand-followers.schema';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     MongooseModule.forFeature([
       { name: Product.name, schema: ProductSchema },
       { name: Favorite.name, schema: FavoriteSchema },
+      { name: Brand.name, schema: BrandSchema },
+      { name: BrandFollowers.name, schema: BrandFollowersSchema },
     ]),
   ],
   controllers: [BrandsController],
   providers: [BrandsService, IkasService, ProductsService],
 })
-export class BrandsModule {}
+export class BrandsModule { }

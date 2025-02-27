@@ -286,6 +286,57 @@ export class OrdersService {
     }
   }
 
+  async getUserOrderedProducts(userId: string) {
+    try {
+      // Find user by ID
+      const user = await this.userModel.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Get all successfully paid orders for this user
+      const orders = await this.orderModel.find({
+        $or: [
+          { userId: userId },
+          { 'customer.email': user.email }
+        ],
+        isPaid: true,
+        status: { $nin: ['cancelled', 'refunded'] }
+      })
+        .sort({ createdAt: -1 })
+        .lean(); // Use lean() to convert to plain JavaScript objects
+
+      // Extract products from orders
+      const orderedProducts = [];
+
+      orders.forEach(order => {
+        if (order.items && order.items.length > 0) {
+          const orderDate = new Date(); // Default to current date if no dates are available
+
+          order.items.forEach(item => {
+            // Add order number and date to the product for reference
+            orderedProducts.push({
+              productId: item.productId,
+              variantId: item.variantId,
+              name: item.name,
+              price: item.price,
+              mainImageId: item.mainImageId,
+              brand: item.brand,
+              selectedVariants: item.selectedVariants || [],
+              orderNumber: order.orderNumber,
+              orderedAt: orderDate
+            });
+          });
+        }
+      });
+
+      return orderedProducts;
+    } catch (error) {
+      console.error('Error getting user ordered products:', error);
+      throw error;
+    }
+  }
+
   async getOrderById(orderId: string) {
     console.log('orderId', orderId);
     try {
@@ -300,7 +351,7 @@ export class OrdersService {
       console.error('Sipariş alınırken hata:', error.response?.data || error);
       throw new Error(
         'Sipariş alınamadı: ' +
-          (error.response?.data?.errors?.[0]?.message || error.message),
+        (error.response?.data?.errors?.[0]?.message || error.message),
       );
     }
   }
@@ -460,7 +511,7 @@ export class OrdersService {
       );
       throw new Error(
         'Sipariş iadesi yapılamadı: ' +
-          (error.response?.data?.errors?.[0]?.message || error.message),
+        (error.response?.data?.errors?.[0]?.message || error.message),
       );
     }
   }
@@ -638,9 +689,9 @@ export class OrdersService {
                 name: item?.variant?.name,
                 brand: item?.variant?.brand
                   ? {
-                      id: item?.variant?.brand?.id,
-                      name: item?.variant?.brand?.name,
-                    }
+                    id: item?.variant?.brand?.id,
+                    name: item?.variant?.brand?.name,
+                  }
                   : null,
                 selectedVariants:
                   item?.variant?.variantValues?.map((variant) => ({
@@ -663,14 +714,14 @@ export class OrdersService {
                 userId: user?._id, // Optional: might be null if user not found
                 customer: order.customer
                   ? {
-                      ikasCustomerId: order.customer.id,
-                      email: order.customer.email,
-                      firstName: order.customer.firstName,
-                      lastName: order.customer.lastName,
-                      fullName: order.customer.fullName,
-                      phone: order.customer.phone,
-                      isGuestCheckout: order.customer.isGuestCheckout,
-                    }
+                    ikasCustomerId: order.customer.id,
+                    email: order.customer.email,
+                    firstName: order.customer.firstName,
+                    lastName: order.customer.lastName,
+                    fullName: order.customer.fullName,
+                    phone: order.customer.phone,
+                    isGuestCheckout: order.customer.isGuestCheckout,
+                  }
                   : null,
                 items:
                   order.orderLineItems?.map((item) => ({
@@ -682,9 +733,9 @@ export class OrdersService {
                     name: item?.variant?.name,
                     brand: item?.variant?.brand
                       ? {
-                          id: item?.variant?.brand?.id,
-                          name: item?.variant?.brand?.name,
-                        }
+                        id: item?.variant?.brand?.id,
+                        name: item?.variant?.brand?.name,
+                      }
                       : null,
                     selectedVariants:
                       item?.variant?.variantValues?.map((variant) => ({
@@ -694,31 +745,31 @@ export class OrdersService {
                   })) || [],
                 shippingAddress: order.shippingAddress
                   ? {
-                      firstName: order.shippingAddress?.firstName,
-                      lastName: order.shippingAddress?.lastName,
-                      phone: order.shippingAddress?.phone,
-                      addressLine1: order.shippingAddress?.addressLine1,
-                      apartment: order.shippingAddress?.addressLine2,
-                      postalCode: order.shippingAddress?.postalCode,
-                      country: order.shippingAddress?.country
-                        ? {
-                            id: order.shippingAddress?.country?.id,
-                            name: order.shippingAddress?.country?.name,
-                          }
-                        : null,
-                      city: order.shippingAddress?.city
-                        ? {
-                            id: order.shippingAddress?.city?.id,
-                            name: order.shippingAddress?.city?.name,
-                          }
-                        : null,
-                      district: order.shippingAddress?.district
-                        ? {
-                            id: order.shippingAddress?.district?.id,
-                            name: order.shippingAddress?.district?.name,
-                          }
-                        : null,
-                    }
+                    firstName: order.shippingAddress?.firstName,
+                    lastName: order.shippingAddress?.lastName,
+                    phone: order.shippingAddress?.phone,
+                    addressLine1: order.shippingAddress?.addressLine1,
+                    apartment: order.shippingAddress?.addressLine2,
+                    postalCode: order.shippingAddress?.postalCode,
+                    country: order.shippingAddress?.country
+                      ? {
+                        id: order.shippingAddress?.country?.id,
+                        name: order.shippingAddress?.country?.name,
+                      }
+                      : null,
+                    city: order.shippingAddress?.city
+                      ? {
+                        id: order.shippingAddress?.city?.id,
+                        name: order.shippingAddress?.city?.name,
+                      }
+                      : null,
+                    district: order.shippingAddress?.district
+                      ? {
+                        id: order.shippingAddress?.district?.id,
+                        name: order.shippingAddress?.district?.name,
+                      }
+                      : null,
+                  }
                   : null,
                 shippingMethod: {
                   type:

@@ -7,6 +7,9 @@ import { Model } from 'mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import { Favorite, FavoriteDocument } from 'src/schemas/favorite.schema';
 import { THE_NORTH_FACE_CHANNEL_ID } from 'src/utils/constants';
+import { Brand, BrandDocument } from 'src/schemas/brand.schema';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { BrandFollowers, BrandFollowersDocument } from 'src/schemas/brand-followers.schema';
 
 @Injectable()
 export class BrandsService {
@@ -15,7 +18,65 @@ export class BrandsService {
     private productsService: ProductsService,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
+    @InjectModel(Brand.name) private brandModel: Model<BrandDocument>,
+    @InjectModel(BrandFollowers.name) private brandFollowersModel: Model<BrandFollowersDocument>,
   ) { }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async syncBrands() {
+    try {
+      const brands = await this.getBrands();
+      console.log('brands ===>', brands);
+      const brandIds = brands.map((brand: any) => brand.id);
+      const brandsFromDb = await this.brandModel.find({ ikasId: { $in: brandIds } });
+      console.log('brandsFromDb ===>', brandsFromDb);
+
+      // Filter brands to create, update, and delete
+      const brandsToCreate = brands.filter((brand: any) => !brandsFromDb.some((b: any) => b.ikasId === brand.id));
+      console.log('brandsToCreate ===>', brandsToCreate);
+      const brandsToUpdate = brands.filter((brand: any) => brandsFromDb.some((b: any) => b.ikasId === brand.id));
+      console.log('brandsToUpdate ===>', brandsToUpdate);
+      const brandsToDelete = brandsFromDb.filter((brand: any) => !brandIds.includes(brand.ikasId));
+      console.log('brandsToDelete ===>', brandsToDelete);
+
+      // Create new brands with default values for required fields
+      await Promise.all(brandsToCreate.map((brand: any) => this.brandModel.create({
+        name: brand.name,
+        imageId: brand.imageId || 'default-image-id', // Provide default if missing
+        description: brand.description || 'No description available', // Provide default if missing
+        salesChannelIds: brand.salesChannelIds || [],
+        ikasId: brand.id,
+      })));
+
+      // Update existing brands with explicit field updates
+      await Promise.all(brandsToUpdate.map((brand: any) => {
+        const updateData = {
+          name: brand.name,
+          imageId: brand.imageId || 'default-image-id', // Provide default if missing
+          description: brand.description || 'No description available', // Provide default if missing
+          salesChannelIds: brand.salesChannelIds || [],
+        };
+        return this.brandModel.updateOne({ ikasId: brand.id }, { $set: updateData });
+      }));
+
+      // Delete brands that no longer exist
+      await Promise.all(brandsToDelete.map((brand: any) => this.brandModel.deleteOne({ _id: brand._id })));
+    } catch (error) {
+      console.error('Error syncing brands:', error);
+    }
+  }
+
+  // New method to check if a user follows a brand
+  async isUserFollowingBrand(userId: string, brandId: string): Promise<boolean> {
+    if (!userId || !brandId) return false;
+
+    const follow = await this.brandFollowersModel.findOne({
+      user: userId,
+      brand: brandId
+    });
+
+    return !!follow;
+  }
 
   async getBrands(page: number = 1, limit: number = 10) {
     try {
@@ -295,7 +356,7 @@ export class BrandsService {
     }
   }
 
-  // Updated method to get brands from IKAS and products from MongoDB
+  // Modified method to include isFollowing information
   async getBrandsWithProducts(limit: number = 4, userId: string) {
     try {
       // Get brands from IKAS
@@ -309,6 +370,14 @@ export class BrandsService {
             .find({ brandId: brand.id })
             .limit(limit)
             .lean();
+
+          // Find the corresponding MongoDB brand document
+          const dbBrand = await this.brandModel.findOne({ ikasId: brand.id });
+
+          // Check if user is following this brand
+          const isFollowing = dbBrand ?
+            await this.isUserFollowingBrand(userId, dbBrand._id.toString()) :
+            false;
 
           // Process products to match the expected format
           const processedProducts = await Promise.all(
@@ -336,12 +405,14 @@ export class BrandsService {
           );
 
           return {
-            _id: brand.id,
+            _id: dbBrand?._id.toString() || brand.id,
+            ikasId: brand.id,
             name: brand.name,
             logo: brand.imageId ? `https://cdn.myikas.com/images/f9291f47-d657-4569-9a4e-e2f64abed207/${brand.imageId}/image_720.webp` : null,
             description: brand.description || '',
             rating: (Math.random() * (5 - 4) + 4).toFixed(1), // Random rating between 4.0-5.0
-            products: processedProducts
+            products: processedProducts,
+            isFollowing: isFollowing
           };
         })
       );
@@ -352,6 +423,65 @@ export class BrandsService {
       return brandsWithProducts;
     } catch (error) {
       console.error('Error fetching brands with products:', error);
+      throw error;
+    }
+  }
+
+  // New method to get a single brand with isFollowing info
+  async getBrandById(brandId: string, userId: string) {
+    try {
+      // Find the brand in our database
+      const brand = await this.brandModel.findById(brandId);
+      if (!brand) {
+        throw new Error('Brand not found');
+      }
+
+      // Check if user is following this brand
+      const isFollowing = await this.isUserFollowingBrand(userId, brandId);
+
+      // Get products for this brand
+      const products = await this.productModel
+        .find({ brandId: brand.ikasId })
+        .lean();
+
+      // Process products to match the expected format
+      const processedProducts = await Promise.all(
+        products.map(async (product) => {
+          // Find the main variant
+          const mainVariant = product.variants?.find(v => v.isActive) || product.variants?.[0];
+
+          // Get the main image
+          const mainImage = mainVariant?.images?.find(img => img.isMain) || mainVariant?.images?.[0];
+
+          // Check if product is in favorites
+          const isFavorite = await this.favoriteModel.exists({ productId: product.ikasProductId, user: userId });
+
+          console.log('product ===> mainVariant', mainVariant);
+
+          return {
+            _id: product.ikasProductId,
+            name: product.name,
+            brandName: brand.name,
+            image: mainImage?.imageId,
+            price: mainVariant?.price || 0,
+            discount: mainVariant?.compareAtPrice || 0,
+            isFavorite: !!isFavorite
+          };
+        })
+      );
+
+      return {
+        _id: brand._id.toString(),
+        ikasId: brand.ikasId,
+        name: brand.name,
+        logo: brand.imageId ? `https://cdn.myikas.com/images/f9291f47-d657-4569-9a4e-e2f64abed207/${brand.imageId}/image_720.webp` : null,
+        description: brand.description || '',
+        rating: (Math.random() * (5 - 4) + 4).toFixed(1), // Random rating between 4.0-5.0
+        products: processedProducts,
+        isFollowing: isFollowing
+      };
+    } catch (error) {
+      console.error('Error fetching brand:', error);
       throw error;
     }
   }

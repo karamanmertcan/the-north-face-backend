@@ -21,6 +21,7 @@ import { UuidModule } from 'nestjs-uuid';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReportModule } from './modules/report/report.module';
+import { BrandFollowersModule } from './modules/brand-followers/brand-followers.module';
 
 @Module({
   imports: [
@@ -51,8 +52,9 @@ import { ReportModule } from './modules/report/report.module';
     OrdersModule,
     CustomersModule,
     ReportModule,
+    BrandFollowersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
