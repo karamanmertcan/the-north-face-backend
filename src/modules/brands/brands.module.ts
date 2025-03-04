@@ -9,6 +9,8 @@ import { Favorite, FavoriteSchema } from 'src/schemas/favorite.schema';
 import { Brand, BrandSchema } from 'src/schemas/brand.schema';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BrandFollowers, BrandFollowersSchema } from 'src/schemas/brand-followers.schema';
+import { User, UserSchema } from 'src/schemas/user.schema';
+import { Video, VideoSchema } from 'src/schemas/video.schema';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { BrandFollowers, BrandFollowersSchema } from 'src/schemas/brand-follower
       { name: Favorite.name, schema: FavoriteSchema },
       { name: Brand.name, schema: BrandSchema },
       { name: BrandFollowers.name, schema: BrandFollowersSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Video.name, schema: VideoSchema },
     ]),
   ],
   controllers: [BrandsController],

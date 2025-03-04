@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, Post, Body, Delete } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CurrentUser } from 'src/decorators/current-user';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
@@ -63,12 +63,15 @@ export class ProductsController {
     type: Number,
   })
   @Get('search')
+  @ApiOperation({ summary: 'Search products, videos, users, and brands' })
+  @ApiResponse({ status: 200, description: 'Returns search results' })
+  @ApiQuery({ name: 'query', required: true, type: String })
+  @ApiQuery({ name: 'category', required: false, type: String, description: 'Filter by category: top, products, videos, users, brands' })
   async searchProducts(
-    @Query('q') query: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('query') query: string,
+    @Query('category') category?: string
   ) {
-    return this.productsService.searchProducts(query, page, limit);
+    return this.productsService.searchProducts(query, category);
   }
 
   @ApiOperation({
@@ -158,5 +161,28 @@ export class ProductsController {
     @CurrentUser() currentUser,
   ) {
     return this.productsService.getProductByCategorieId(id, currentUser._id);
+  }
+
+  @Get('trending')
+  @ApiOperation({ summary: 'Get trending products' })
+  @ApiResponse({ status: 200, description: 'Returns trending products' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getTrendingProducts(@Query('limit') limit: number = 10) {
+    const parsedLimit = parseInt(String(limit), 10) || 10;
+    return this.productsService.getTrendingProducts(parsedLimit);
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'Get product categories' })
+  @ApiResponse({ status: 200, description: 'Returns product categories' })
+  async getProductCategories() {
+    return this.productsService.getProductCategories();
+  }
+
+  @Get('search/suggestions')
+  @ApiOperation({ summary: 'Get search suggestions' })
+  @ApiResponse({ status: 200, description: 'Returns search suggestions' })
+  async getSearchSuggestions() {
+    return this.productsService.getSearchSuggestions();
   }
 }

@@ -9,6 +9,8 @@ import { Product, ProductSchema } from '../../schemas/product.schema';
 import { Favorite, FavoriteSchema } from '../../schemas/favorite.schema';
 import { IkasService } from '../../services/ikas.service';
 import { ProductsService } from '../products/products.service';
+import { Video, VideoSchema } from 'src/schemas/video.schema';
+import { User, UserSchema } from 'src/schemas/user.schema';
 
 @Module({
     imports: [
@@ -17,6 +19,8 @@ import { ProductsService } from '../products/products.service';
             { name: Brand.name, schema: BrandSchema },
             { name: Product.name, schema: ProductSchema },
             { name: Favorite.name, schema: FavoriteSchema },
+            { name: Video.name, schema: VideoSchema },
+            { name: User.name, schema: UserSchema },
         ]),
     ],
     controllers: [BrandFollowersController],

@@ -6,6 +6,9 @@ import { Favorite, FavoriteDocument } from 'src/schemas/favorite.schema';
 import { isValidObjectId, Model } from 'mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { Video, VideoDocument } from 'src/schemas/video.schema';
+import { User, UserDocument } from 'src/schemas/user.schema';
+import { Brand, BrandDocument } from 'src/schemas/brand.schema';
 
 @Injectable()
 export class ProductsService {
@@ -13,6 +16,9 @@ export class ProductsService {
     private ikasService: IkasService,
     @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(Video.name) private videoModel: Model<VideoDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Brand.name) private brandModel: Model<BrandDocument>,
   ) { }
 
   @Cron(CronExpression.EVERY_6_HOURS)
@@ -288,79 +294,158 @@ export class ProductsService {
     }
   }
 
-  async searchProducts(query: string, page: number = 1, limit: number = 10) {
+  async searchProducts(query: string, category?: string): Promise<any> {
     try {
-      const accessToken = await this.ikasService.getAccessToken();
-      const skip = (page - 1) * limit;
+      console.log('query', query);
+      console.log('category', category);
+
+      // Arama sorgusu için regex oluştur
       const searchRegex = new RegExp(query, 'i');
 
-      const products = await this.productModel
-        .find({
-          $or: [
-            { name: searchRegex },
-            { 'brand.name': searchRegex },
-            { 'tags.name': searchRegex },
-          ],
-        })
-        .select('_id name brand variants productVariantTypes ikasProductId')
-        .skip(skip)
-        .limit(limit)
-        .lean();
+      // Eğer kategori belirtilmişse sadece o kategoride ara
+      if (category && ['products', 'videos', 'users', 'brands'].includes(category.toLowerCase())) {
+        return await this.searchByCategory(query, category.toLowerCase());
+      }
 
-      // Her ürün için favorite durumunu kontrol et
-      const productsWithFavorites = await Promise.all(
-        products.map(async (product) => {
-          const findProductIsFavorite = await this.favoriteModel.findOne({
-            productId: product.ikasProductId,
-          });
-          const mainVariant: any =
-            product.variants?.find((v: any) => v.isActive) ||
-            product.variants?.[0];
-          const price = mainVariant?.price;
-          const discountPrice = mainVariant?.compareAtPrice;
-
-          // Use the helper method to normalize variants
-          const normalizedVariants = await this.normalizeProductVariants(
-            product,
-            accessToken,
-          );
-
-          return {
-            _id: product._id,
-            name: product.name,
-            brandName: product.brand?.name || '',
-            image: mainVariant?.images?.[0]?.imageId,
-            price: price,
-            discount: discountPrice,
-            variants: product.variants || [],
-            normalizedVariants,
-            isFavorite: findProductIsFavorite ? true : false,
-          };
-        }),
-      );
-
-      const total = await this.productModel.countDocuments({
-        $or: [
-          { name: searchRegex },
-          { 'brand.name': searchRegex },
-          { 'tags.name': searchRegex },
-        ],
-      });
+      // Kategori belirtilmemişse veya "top" ise tüm kategorilerde ara ve birleştir
+      const [products, videos, users, brands] = await Promise.all([
+        this.searchByCategory(query, 'products'),
+        this.searchByCategory(query, 'videos'),
+        this.searchByCategory(query, 'users'),
+        this.searchByCategory(query, 'brands')
+      ]);
 
       return {
+        success: true,
         data: {
-          listProduct: {
-            data: productsWithFavorites,
-            count: total,
-            hasNext: skip + limit < total,
-            limit,
-            page,
-          },
+          products: products.data,
+          videos: videos.data,
+          users: users.data,
+          brands: brands.data
         },
+        message: 'Arama sonuçları başarıyla getirildi'
       };
     } catch (error) {
-      console.error('Ürün arama hatası:', error);
-      throw error;
+      console.error('Arama hatası:', error);
+      return {
+        success: false,
+        data: {},
+        message: 'Arama sırasında bir hata oluştu'
+      };
+    }
+  }
+
+  // Kategoriye göre arama yapan yardımcı fonksiyon
+  private async searchByCategory(query: string, category: string): Promise<any> {
+    const searchRegex = new RegExp(query, 'i');
+
+    try {
+      switch (category) {
+        case 'products':
+          // Ürünleri ara
+          const products = await this.productModel.find({
+            $or: [
+              { name: { $regex: searchRegex } },
+              { "brand.name": { $regex: searchRegex } },
+              { description: { $regex: searchRegex } },
+            ],
+          }).limit(20);
+
+          // Ürünleri formatla
+          const formattedProducts = products.map(product => {
+            const mainVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
+            const mainImage = mainVariant && mainVariant.images && mainVariant.images.length > 0
+              ? mainVariant.images.find(img => img.isMain) || mainVariant.images[0]
+              : null;
+
+            // Variant yapısında price ve compareAtPrice alanlarını kullan
+            const price = mainVariant ? mainVariant.price || 0 : 0;
+            const compareAtPrice = mainVariant ? mainVariant.compareAtPrice || null : null;
+
+            // İndirim oranını hesapla - compareAtPrice > price olduğunda indirim var demektir
+            const discount = compareAtPrice && compareAtPrice > price
+              ? Math.round((1 - price / compareAtPrice) * 100)
+              : 0;
+
+            return {
+              _id: product._id,
+              id: product.ikasProductId || product._id,
+              name: product.name,
+              brandName: product.brand ? product.brand.name : '',
+              price: price,
+              discount: discount,
+              image: mainImage ? mainImage.imageId : null,
+              description: product.description || '',
+            };
+          });
+
+          return {
+            success: true,
+            data: formattedProducts,
+            message: 'Ürünler başarıyla getirildi'
+          };
+
+        case 'videos':
+
+          const videos = await this.videoModel.find({
+            $or: [
+              { title: { $regex: searchRegex } },
+              { description: { $regex: searchRegex } },
+            ],
+          }).limit(20);
+
+          console.log('videos', videos);
+
+          return {
+            success: true,
+            data: videos,
+            message: 'Videolar başarıyla getirildi'
+          };
+
+        case 'users':
+
+          const users = await this.userModel.find({
+            $or: [
+              { username: { $regex: searchRegex } },
+              { description: { $regex: searchRegex } },
+            ],
+          }).limit(20);
+
+          return {
+            success: true,
+            data: users,
+            message: 'Kullanıcılar başarıyla getirildi'
+          };
+
+        case 'brands':
+
+          const brands = await this.brandModel.find({
+            $or: [
+              { name: { $regex: searchRegex } },
+              { description: { $regex: searchRegex } },
+            ],
+          }).limit(20);
+
+          return {
+            success: true,
+            data: brands,
+            message: 'Markalar başarıyla getirildi'
+          };
+
+        default:
+          return {
+            success: false,
+            data: [],
+            message: 'Geçersiz kategori'
+          };
+      }
+    } catch (error) {
+      console.error(`${category} araması hatası:`, error);
+      return {
+        success: false,
+        data: [],
+        message: `${category} araması sırasında bir hata oluştu`
+      };
     }
   }
 
@@ -722,5 +807,87 @@ export class ProductsService {
       console.error('Error getting products by category:', error);
       throw new Error('Failed to get products by category');
     }
+  }
+
+  async getTrendingProducts(limit: number = 10): Promise<any> {
+    // Burada gerçek bir algoritma kullanılabilir, şimdilik rastgele ürünler döndürelim
+    console.log('sample limit', limit)
+    // Limit parametresini sayıya dönüştür
+    const sampleSize = parseInt(String(limit), 10) || 10;
+
+    const products = await this.productModel.aggregate([
+      { $sample: { size: sampleSize } },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          image: 1,
+          brandName: 1,
+          brandId: 1,
+          variants: 1,
+          ikasProductId: 1,
+          rating: { $round: [{ $multiply: [{ $rand: {} }, 5] }, 1] }, // Rastgele rating
+          reviewCount: { $floor: { $multiply: [{ $rand: {} }, 1000] } }, // Rastgele yorum sayısı
+        },
+      },
+    ]);
+
+    const productsWithPrice = await Promise.all(products.map(async (product) => {
+      const mainVariant = product.variants.find((v: any) => v.isActive);
+      return {
+        ...product,
+        price: mainVariant.price,
+        discount: mainVariant.compareAtPrice,
+        imageId: mainVariant.images[0].imageId,
+        productId: product.ikasProductId,
+      };
+    }));
+
+    console.log('products', productsWithPrice)
+    return {
+      success: true,
+      data: productsWithPrice,
+    };
+  }
+
+  async getSearchSuggestions(): Promise<any> {
+    // Popüler arama önerileri
+    const suggestions = [
+      'Villain Bear',
+      'Sema Art Atelier',
+      'Bere',
+      'Baha Img',
+      'Portre',
+      'Alerma',
+      'Mxthersocker',
+      'Bomo',
+    ];
+
+    // Rastgele karıştır ve 5 tanesini döndür
+    const randomSuggestions = suggestions
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 5);
+
+    return {
+      success: true,
+      data: randomSuggestions,
+    };
+  }
+
+  async getProductCategories(): Promise<any> {
+    // Örnek kategoriler
+    const categories = [
+      { id: 1, name: 'Ayakkabı', icon: '👟' },
+      { id: 2, name: 'Mont', icon: '🧥' },
+      { id: 3, name: 'Pantolon', icon: '👖' },
+      { id: 4, name: 'Tişört', icon: '👕' },
+      { id: 5, name: 'Aksesuar', icon: '🧢' },
+      { id: 6, name: 'Çanta', icon: '🎒' },
+    ];
+
+    return {
+      success: true,
+      data: categories,
+    };
   }
 }

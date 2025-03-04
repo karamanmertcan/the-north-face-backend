@@ -6,6 +6,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Favorite, FavoriteSchema } from 'src/schemas/favorite.schema';
 import { Product, ProductSchema } from 'src/schemas/product.schema';
 import { ScheduleModule } from '@nestjs/schedule';
+import { Video, VideoSchema } from 'src/schemas/video.schema';
+import { User, UserSchema } from 'src/schemas/user.schema';
+import { Brand, BrandSchema } from 'src/schemas/brand.schema';
 
 @Module({
   imports: [
@@ -13,9 +16,12 @@ import { ScheduleModule } from '@nestjs/schedule';
     MongooseModule.forFeature([
       { name: Favorite.name, schema: FavoriteSchema },
       { name: Product.name, schema: ProductSchema },
+      { name: Video.name, schema: VideoSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Brand.name, schema: BrandSchema },
     ]),
   ],
   controllers: [ProductsController],
   providers: [ProductsService, IkasService],
 })
-export class ProductsModule {}
+export class ProductsModule { }

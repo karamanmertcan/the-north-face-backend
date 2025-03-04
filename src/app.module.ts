@@ -22,6 +22,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReportModule } from './modules/report/report.module';
 import { BrandFollowersModule } from './modules/brand-followers/brand-followers.module';
+import { UserProductViewsModule } from './modules/user-product-views/user-product-views.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { BrandFollowersModule } from './modules/brand-followers/brand-followers.
     CustomersModule,
     ReportModule,
     BrandFollowersModule,
+    UserProductViewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
